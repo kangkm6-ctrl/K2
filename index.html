@@ -6,14 +6,17 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="기본적분석">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="icon.svg">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png" type="image/png">
 <title>기본적분석투자 (여섯 거장의 눈)</title>
 <style>
 :root{--bg:#0f1420;--card:#182033;--line:#27324b;--tx:#e9edf5;--sub:#8e9ab3;--gold:#e8b84a;--up:#5ad1a0;--dn:#ef6a6a}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.45 -apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;padding-bottom:60px}
 header{padding:calc(6px + env(safe-area-inset-top)) 14px 0;position:sticky;top:0;background:var(--bg);z-index:5;border-bottom:1px solid var(--line)}
-h1{font-size:clamp(19px,6vw,27px);line-height:1.15;letter-spacing:-.04em;margin:0;color:var(--gold);white-space:nowrap}h1 small{display:block;color:var(--sub);font-size:12px;font-weight:400;letter-spacing:0;margin-top:2px}
+h1{font-size:clamp(16px,5vw,26px);line-height:1.15;letter-spacing:-.04em;margin:0;color:var(--gold);white-space:nowrap}h1 small{display:block;color:var(--sub);font-size:12px;font-weight:400;letter-spacing:0;margin-top:2px}
 main{padding:6px 12px;max-width:760px;margin:auto}
+.hd{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}#gear{background:none;border:0;color:var(--gold);font-size:24px;line-height:1;padding:0 2px;flex:none}.pre{white-space:pre-wrap;font-size:12px;background:#101828;border-radius:8px;padding:8px;margin-top:8px;color:var(--sub)}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#e8b84a;color:#1a1405;padding:8px 14px;border-radius:20px;font-size:13px;font-weight:700;z-index:50;display:none;max-width:90vw}
 .chips{display:flex;gap:6px;overflow-x:auto;padding:5px 0 6px;scrollbar-width:none}.chips::-webkit-scrollbar{display:none}
 .chip{flex:none;padding:4px 11px;border-radius:20px;border:1px solid var(--line);background:var(--card);color:var(--tx);font-size:14px}
 .chip.on{border-color:var(--gold);color:var(--gold)}
@@ -47,16 +50,17 @@ dialog::backdrop{background:#000a}
 .pend{position:relative;height:14px;border-radius:8px;background:linear-gradient(90deg,#5ad1a0,#7aa7ff 50%,#ef6a6a);margin:12px 0 4px}
 .pend i{position:absolute;top:-5px;width:6px;height:24px;background:#fff;border-radius:3px;transform:translateX(-3px)}
 </style></head><body>
-<header><h1>기본적분석투자 (여섯 거장의 눈)</h1><div class="chips" id="tabs"></div></header>
+<header><div class="hd"><h1>기본적분석투자 (여섯 거장의 눈)</h1><button id="gear" aria-label="설정">⚙</button></div><div class="chips" id="tabs"></div></header>
 <main>
 <div class="row" style="margin-bottom:2px;gap:6px">
 <button class="btn pri" id="add">＋ 종목 추가</button>
+<button class="btn" id="imp2">📥 시장 종목 불러오기</button>
 <button class="btn" id="edit" style="display:none">이 종목 수정</button>
-<button class="btn" id="data">백업/복원</button>
 </div>
 <div id="view"></div>
 <div class="disc">※ 이 앱은 투자 거장들의 공개된 원칙을 단순화해 재무 지표에 대입한 학습·점검용 도구입니다. 실제 인물의 평가나 투자 권유가 아니며, 모든 판단과 책임은 본인에게 있습니다. 재무 수치는 직접 확인해 입력하세요. 데이터는 이 기기(브라우저)에만 저장됩니다.</div>
 </main>
+<div id="toast"></div>
 
 <dialog id="dlg"><form method="dialog" id="f">
 <h2 style="margin:0;color:var(--gold)" id="ftitle">종목 입력</h2>
@@ -71,15 +75,38 @@ dialog::backdrop{background:#000a}
 <span class="row"><button class="btn" type="button" id="sample">샘플</button><button class="btn dn" type="button" id="del">삭제</button></span></div>
 </form></dialog>
 
-<dialog id="dd"><h2 style="margin:0;color:var(--gold)">백업 / 복원</h2>
-<p class="sub">JSON을 복사해 보관하거나, 붙여넣어 복원하세요.</p><textarea id="json" style="min-height:180px"></textarea>
-<div class="row" style="margin-top:10px"><button class="btn pri" id="imp">복원</button><button class="btn" id="cp">복사</button><button class="btn" id="cl">닫기</button></div></dialog>
+<dialog id="dp"><h2 style="margin:0;color:var(--gold)">시장 종목 불러오기</h2>
+<p class="sub" style="margin:4px 0">증권사 HTS·네이버·FnGuide·엑셀에서 표를 복사해 붙여넣으세요. 엑셀·HTML 표뿐 아니라 Claude가 답한 <b>마크다운 표</b>도 그대로 붙여넣을 수 있습니다. 첫 줄이 제목이면 <b>종목명, 종목코드, PER, PBR, ROE, 부채비율, 영업이익률, 매출성장률, EPS성장률, 영업현금흐름</b> 이름으로 열을 자동 인식합니다(일부 열만 있어도 됨). 제목이 없으면 이 순서로 읽습니다. 이미 있는 종목은 코드/이름으로 찾아 숫자만 갱신합니다.</p>
+<textarea id="ptxt" style="min-height:180px;font-size:12px" placeholder="종목명&#9;종목코드&#9;PER&#9;PBR&#9;ROE&#9;부채비율&#9;영업이익률&#9;매출성장률&#9;EPS성장률&#10;삼성전자&#9;005930&#9;12.5&#9;1.3&#9;11&#9;27&#9;15&#9;10&#9;20"></textarea>
+<p class="sub" id="pmsg" style="margin:6px 0"></p>
+<div class="row"><button class="btn pri" id="pgo">불러오기</button><button class="btn" id="phd">제목줄 복사</button><button class="btn" id="pcl">닫기</button></div></dialog>
+<dialog id="ds"><div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0;color:var(--gold)">⚙ 설정</h2><button class="btn" id="dsx">닫기</button></div>
+<div class="card"><h2>🔌 시세 서버 연결</h2>
+<p class="sub" style="margin:0 0 4px">기존 KIS 프록시에서 종목의 이름·PER·PBR(·ROE)을 불러옵니다. GitHub Pages 등 직접 올린 주소에서만 동작하며, 비밀키는 이 브라우저에만 저장됩니다(백업 제외).</p>
+<label>프록시 서버 주소</label><input id="c-url">
+<label>서버 비밀키 (APP_SHARED_SECRET)</label><input id="c-secret" type="password" autocomplete="off">
+<label>비밀키 전달 방식 (자동 감지)</label><input id="c-mode">
+<div class="row" style="margin-top:8px"><button class="btn pri" id="c-test">저장하고 연결 테스트</button></div>
+<div class="pre" id="c-msg" style="display:none"></div></div>
+<div class="card"><h2>📡 서버에서 종목 불러오기</h2>
+<p class="sub" style="margin:0 0 4px">한 줄에 “코드 이름”. 서버가 주는 PER·PBR(·ROE)만 채워지고, 나머지 재무는 직접 입력하거나 표 붙여넣기로 보완하세요. 이미 있는 종목은 숫자만 갱신합니다.</p>
+<textarea id="c-uni" style="min-height:130px;font-size:12px"></textarea>
+<div class="row" style="margin-top:8px"><button class="btn pri" id="c-load">불러오기</button><button class="btn" id="c-stop">중지</button></div>
+<p class="sub" id="c-prog" style="margin:6px 0 0"></p></div>
+<div class="card"><h2>🔎 부족한 재무 → 웹검색으로 채우기</h2>
+<p class="sub" style="margin:0 0 4px">서버는 PER·PBR 정도만 줍니다. 나머지(ROE·부채비율·영업이익률·성장률·현금흐름)는 아래 순서로 채우세요.<br>① 질문문 복사 → ② Claude(웹검색 켜기)에 붙여넣기 → ③ 답으로 나온 표를 복사해 메인의 <b>📥 시장 종목 불러오기</b>에 붙여넣기</p>
+<p id="c-miss" class="sub" style="margin:4px 0"></p><div class="row" id="c-missbtn"></div></div>
+<div class="card"><h2>💾 백업 / 복원</h2>
+<p class="sub" style="margin:0 0 4px">종목 데이터를 JSON으로 복사해 보관하거나, 붙여넣어 복원합니다(비밀키 제외).</p>
+<textarea id="json" style="min-height:110px;font-size:12px"></textarea>
+<div class="row" style="margin-top:8px"><button class="btn pri" id="imp">복원</button><button class="btn" id="cp">복사</button></div></div>
+</dialog>
 
 <script>
 const K='sixmasters_v1';
 let db;try{db=JSON.parse(localStorage.getItem(K))||{}}catch(e){db={}}
 db.stocks=db.stocks||[];
-['scan','conn','uni','sel'].forEach(k=>delete db[k]); /* 이전(기술적 분석) 버전 데이터 정리 */
+['scan','sel'].forEach(k=>delete db[k]); /* 이전(기술적 분석) 버전 데이터 정리 */
 db.stocks.forEach(s=>{delete s.ser;delete s.man;delete s.uni;s.fin=s.fin||{}});
 const save=()=>{try{localStorage.setItem(K,JSON.stringify(db));return true}catch(e){return false}};
 const SEEDS=[
@@ -199,6 +226,7 @@ function renderDetail(s){const a=analyze(s),{f,res,avg}=a,v=$('#view');
  ${tile('부채비율',f.debt,f.debt+'%',f.debt<=100)}${tile('영업이익률',f.opm,f.opm+'%',f.opm>=10)}${tile('영업현금흐름',f.ocf,f.ocf>0?'플러스':'마이너스',f.ocf>0)}
  ${tile('매출 성장',f.revg,f.revg+'%',f.revg>=10)}${tile('EPS 성장',f.epsg,f.epsg+'%',f.epsg>=10)}</div>
  ${s.memo?`<p class="sub" style="margin:10px 0 0">📝 ${esc(s.memo)}</p>`:''}<p class="sub" style="margin:6px 0 0">초록=거장들이 선호하는 기준 충족, 빨강=기준 미달(참고용)</p></div>
+ ${a.cov<8?`<div class="card"><h2>🔎 부족한 항목 웹검색으로 참조</h2><div class="row"><a class="btn" target="_blank" rel="noopener" href="${gl(s)}">구글 검색</a>${s.tick?`<a class="btn" target="_blank" rel="noopener" href="https://finance.naver.com/item/main.naver?code=${s.tick}">네이버증권</a><a class="btn" target="_blank" rel="noopener" href="https://comp.fnguide.com/SVO2/ASP/SVD_Main.asp?pGB=1&gicode=A${s.tick}">FnGuide</a>`:''}<button class="btn pri" data-aiq="${s.id}">🤖 AI 질문문 복사</button></div><p class="sub" style="margin:6px 0 0">질문문을 Claude(웹검색 켜기)에 붙여넣고, 받은 표를 메인의 📥 시장 종목 불러오기에 붙여넣으면 채워집니다.</p></div>`:''}
  <div class="card"><h2>여섯 거장의 관점</h2>${res.map(r=>`<details class="l" open><summary><span class="sc" style="background:${col(r.score,r.na)}">${r.na?'–':r.score}</span><span class="who">${r.who}<small>${r.sub}</small></span></summary>
  <div class="verd">${r.verdict}</div>${ptsHTML(r)}<p class="philo">${r.philo}</p></details>`).join('')}</div>`;
  $('#back').onclick=()=>{detail=null;render();scrollTo(0,0)}}
@@ -219,7 +247,30 @@ function render(){drawTabs();$('#edit').style.display=detail?'':'none';
   grp('✅ 추천 예측',r=>!r.na&&r.score>=70)+grp('👀 관망',r=>!r.na&&r.score>=50&&r.score<70)+grp('⛔ 제외·회피',r=>!r.na&&r.score<50)+grp('❔ 데이터 부족',r=>r.na)+
   '<p class="sub" style="margin:12px 4px">종목을 탭하면 이 거장 관점의 판단 근거가 펼쳐집니다. 재무 입력이 많을수록 정확합니다.</p>'}
 $('#tabs').onclick=e=>{const b=e.target.closest('.chip');if(!b)return;const t=b.dataset.t;tab=t==='all'?'all':+t;detail=null;render();scrollTo(0,0)};
-$('#view').onclick=e=>{const o=e.target.closest('[data-open]'),c=e.target.closest('.stk');const id=o?o.dataset.open:c?c.dataset.id:null;if(id){detail=id;render();scrollTo(0,0)}};
+$('#view').onclick=e=>{const q=e.target.closest('[data-aiq]');if(q){const s=db.stocks.find(x=>x.id===q.dataset.aiq);if(s)toast(copyText(aiPrompt([s]))?'질문문을 복사했습니다. Claude에 붙여넣으세요':'복사 실패');return}
+ const o=e.target.closest('[data-open]'),c=e.target.closest('.stk');const id=o?o.dataset.open:c?c.dataset.id:null;if(id){detail=id;render();scrollTo(0,0)}};
+/* ---------- 시장 종목 불러오기 (표 붙여넣기) ---------- */
+const SYN={name:['종목명','종목','이름','기업명','name'],tick:['코드','종목코드','티커','code','ticker'],per:['per','per(배)'],pbr:['pbr','pbr(배)'],roe:['roe','roe(%)'],debt:['부채비율','부채비율(%)','부채'],opm:['영업이익률','영업이익률(%)','영업이익율','opm'],revg:['매출성장률','매출증가율','매출액증가율','매출성장','매출성장률(%)'],epsg:['eps성장률','eps증가율','eps성장','eps성장률(%)','순이익성장률'],ocf:['영업현금흐름','영업활동현금흐름','ocf']};
+const normH=s=>String(s||'').toLowerCase().replace(/\s/g,'');
+const toNum=x=>{const t=String(x??'').replace(/[−–]/g,'-').replace(/[,%배원\s]/g,'');return /^[-+]?\d*\.?\d+$/.test(t)?parseFloat(t):null};
+function importText(txt){const lines=txt.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);if(!lines.length)return'붙여넣은 내용이 없습니다.';
+ const md=lines.filter(l=>l.includes('|')).length>=2&&!lines[0].includes('\t');const L2=md?lines.filter(l=>!/^\|?\s*:?-{2,}/.test(l)):lines;const sep=md?'|':L2[0].includes('\t')?'\t':',';const rows=L2.map(l=>(md?l.replace(/^\||\|$/g,''):l).split(sep).map(c=>c.trim().replace(/^"|"$/g,'').replace(/\*\*/g,'')));
+ const order=['name','tick','per','pbr','roe','debt','opm','revg','epsg','ocf'];
+ const m={};rows[0].map(normH).forEach((c,i)=>{for(const k in SYN)if(m[k]==null&&SYN[k].map(normH).includes(c))m[k]=i});
+ let map,start=0;if(m.name!=null){map=m;start=1}else{map=Object.fromEntries(order.map((k,i)=>[k,i]));if(toNum(rows[0][2])==null&&rows[0].length>2)start=1}
+ let add=0,upd=0,skip=0;
+ rows.slice(start).forEach((r,n)=>{let name=(r[map.name]||'').trim();let tick=map.tick!=null?(r[map.tick]||'').replace(/\D/g,''):'';if(tick&&tick.length<=6)tick=tick.padStart(6,'0');else if(tick.length>6)tick='';
+  if(!name)name=tick;if(!name){skip++;return}
+  const fin={};let cnt=0;for(const k of FK)if(map[k]!=null){const v=toNum(r[map[k]]);if(v!=null){fin[k]=v;cnt++}}
+  if(!cnt){skip++;return}
+  const ex=db.stocks.find(s=>(tick&&s.tick===tick)||s.name===name);
+  if(ex){ex.fin=Object.assign(ex.fin||{},fin);if(!ex.tick&&tick)ex.tick=tick;upd++}
+  else{db.stocks.push({id:Date.now()+'_'+n,name,tick,fin,memo:'불러오기'});add++}});
+ save();return`완료: 새로 ${add}개 추가, ${upd}개 갱신${skip?`, ${skip}줄 건너뜀(이름/숫자 없음)`:''}`}
+$('#imp2').onclick=()=>{$('#pmsg').textContent='';$('#dp').showModal()};
+$('#pcl').onclick=()=>$('#dp').close();
+$('#phd').onclick=()=>{const t='종목명\t종목코드\tPER\tPBR\tROE\t부채비율\t영업이익률\t매출성장률\tEPS성장률\t영업현금흐름';try{navigator.clipboard.writeText(t);$('#pmsg').textContent='제목줄을 복사했습니다. 엑셀 첫 줄에 붙여넣어 쓰세요.'}catch(e){$('#ptxt').value=t+'\n'}};
+$('#pgo').onclick=()=>{const msg=importText($('#ptxt').value);$('#pmsg').textContent=msg;if(msg.startsWith('완료')){tab='all';detail=null;render();refreshMiss()}};
 /* ---------- 입력 ---------- */
 let editing=null;
 function openForm(s){editing=s||null;$('#ftitle').textContent=s?'종목 수정':'종목 추가';
@@ -232,9 +283,96 @@ $('#f').addEventListener('submit',e=>{if(e.submitter&&e.submitter.value!=='ok')r
  if(!editing)db.stocks.push(o);detail=o.id;save();render()});
 $('#del').onclick=()=>{if(editing&&confirm('삭제할까요?')){db.stocks=db.stocks.filter(x=>x!==editing);detail=null;save();$('#dlg').close();render()}};
 $('#sample').onclick=()=>{$('#name').value='샘플기업';const v={per:16,pbr:2.1,roe:18,debt:70,opm:17,ocf:500,revg:14,epsg:18};for(const k in v)$('#f_'+k).value=v[k];$('#memo').value='예시 데이터'};
-$('#data').onclick=()=>{$('#json').value=JSON.stringify({stocks:db.stocks});$('#dd').showModal()};
-$('#cl').onclick=()=>$('#dd').close();$('#cp').onclick=()=>{$('#json').select();document.execCommand('copy')};
-$('#imp').onclick=()=>{try{const o=JSON.parse($('#json').value);if(!Array.isArray(o.stocks))throw 0;db.stocks=o.stocks;db.seeded=true;save();$('#dd').close();render()}catch(e){alert('JSON 형식이 올바르지 않습니다')}};
+/* ---------- 웹검색 보충 ---------- */
+const gl=s=>'https://www.google.com/search?q='+encodeURIComponent((s.name||'')+' '+(s.tick||'')+' ROE 부채비율 영업이익률 PER PBR 최신');
+function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',2200)}
+function copyText(t){try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t);return true}}catch(e){}
+ const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();let ok=false;try{ok=document.execCommand('copy')}catch(e){}ta.remove();return ok}
+const missing=()=>db.stocks.filter(s=>FK.some(k=>!has((s.fin||{})[k])));
+function aiPrompt(list){return `다음 한국 상장 종목의 최신 재무 지표를 웹검색으로 확인해서, 아래 열 순서의 표로만 답해줘(탭 구분 또는 마크다운 표 모두 가능).
+열: 종목명 | 종목코드 | PER | PBR | ROE | 부채비율 | 영업이익률 | 매출성장률 | EPS성장률 | 영업현금흐름
+- 단위: PER·PBR은 배, 나머지는 %, 영업현금흐름은 플러스/마이너스 금액(숫자만)
+- 최근 확정 연간(또는 최근 4분기 합산) 기준, 성장률은 전년 대비
+- 확인하지 못한 칸은 비워 두고, 지어내지 말 것
+- 표 아래에 출처와 기준 연도를 따로 적어줘
+종목: ${list.map(s=>s.name+(s.tick?'('+s.tick+')':'')).join(', ')}`}
+function refreshMiss(){const m=missing(),box=$('#c-missbtn');$('#c-miss').textContent=m.length?`재무가 비어 있는 종목 ${m.length}개`:'모든 종목의 재무가 채워져 있습니다.';box.innerHTML='';
+ for(let i=0;i<m.length;i+=25){const b=document.createElement('button');b.className='btn'+(i===0?' pri':'');b.textContent=`🤖 질문문 복사 (${i+1}~${Math.min(i+25,m.length)})`;b.onclick=()=>{toast(copyText(aiPrompt(m.slice(i,i+25)))?'질문문을 복사했습니다. Claude에 붙여넣으세요':'복사 실패 — 직접 선택해 복사하세요')};box.appendChild(b)}}
+/* ---------- 설정: 연결 · 불러오기 · 백업/복원 ---------- */
+const DEFAULT_UNI=`005930 삼성전자
+000660 SK하이닉스
+373220 LG에너지솔루션
+207940 삼성바이오로직스
+005380 현대차
+000270 기아
+035420 NAVER
+035720 카카오
+068270 셀트리온
+105560 KB금융
+055550 신한지주
+005490 POSCO홀딩스
+051910 LG화학
+006400 삼성SDI
+247540 에코프로비엠
+003670 포스코퓨처엠
+137400 피엔티
+462870 시프트업
+012330 현대모비스
+028260 삼성물산
+012450 한화에어로스페이스
+329180 HD현대중공업
+259960 크래프톤
+003230 삼양식품
+278470 에이피알
+196170 알테오젠
+042700 한미반도체
+010130 고려아연
+066570 LG전자
+033780 KT&G`;
+db.conn=Object.assign({url:'https://kkm-mwrc.onrender.com',secret:'',mode:'h:x-api-key'},db.conn||{});db.uni=db.uni||DEFAULT_UNI;
+const MODES=['h:x-api-key','h:x-app-secret','h:x-secret','b:','q:secret','q:key','q:apiKey','n:'];
+let stopFlag=false,loading=false;
+async function httpJSON(path,mode,ms=30000){const c=db.conn;let url=c.url.replace(/\/+$/,'')+path;const hd={};const[t,...r]=mode.split(':'),arg=r.join(':');
+ if(t==='h')hd[arg]=c.secret;else if(t==='b')hd.Authorization='Bearer '+c.secret;else if(t==='q')url+=(url.includes('?')?'&':'?')+encodeURIComponent(arg)+'='+encodeURIComponent(c.secret);
+ const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),ms);
+ try{const res=await fetch(url,{headers:hd,signal:ac.signal});if(!res.ok){const e=new Error('HTTP '+res.status);e.status=res.status;throw e}
+  const tx=await res.text();try{return JSON.parse(tx)}catch(e){throw new Error('JSON이 아닌 응답: '+tx.slice(0,80))}}finally{clearTimeout(tm)}}
+function flat(o,out={},d=0){if(o&&typeof o==='object'&&d<3)for(const k in o){const v=o[k];if(v&&typeof v==='object')flat(v,out,d+1);else out[k.toLowerCase()]=v}return out}
+function parseQuote(j){const f=flat(j),n=k=>{const x=parseFloat(String(f[k]).replace(/,/g,''));return isFinite(x)&&x!==0?x:null};
+ const per=n('per'),pbr=n('pbr'),eps=n('eps'),bps=n('bps');let roe=n('roe');if(roe==null&&eps&&bps)roe=eps/bps*100;
+ const fin={};if(per)fin.per=per;if(pbr)fin.pbr=pbr;if(roe)fin.roe=+roe.toFixed(1);
+ const name=f['name']||f['hts_kor_isnm']||f['stock_name']||null;return{fin,name}}
+const msg=t=>{const e=$('#c-msg');e.style.display=t?'block':'none';e.textContent=t||''};
+async function testConn(){const c=db.conn;
+ c.url=$('#c-url').value.trim();c.secret=$('#c-secret').value.trim();const custom=$('#c-mode').value.trim();save();
+ if(!c.url||!c.secret){msg('서버 주소와 비밀키를 입력하세요.');return}
+ const modes=[custom,...MODES].filter((m,i,a)=>m&&a.indexOf(m)===i),log=[];$('#c-test').disabled=true;
+ for(let i=0;i<modes.length;i++){const m=modes[i];msg(`연결 테스트 중 (${i+1}/${modes.length}) · 서버가 잠들어 있으면 1분 가까이 걸릴 수 있습니다.`);
+  let j;try{j=await httpJSON('/price/005930',m,i===0?70000:25000)}catch(e){log.push(m+' → '+(e.name==='AbortError'?'시간 초과':e instanceof TypeError?'연결 실패':(e.message||'실패')));continue}
+  c.mode=m;$('#c-mode').value=m;save();const q=parseQuote(j),k=Object.keys(q.fin);
+  log.unshift('성공: 비밀키 전달 방식 '+m,k.length?'재무 필드 확인: '+k.join(', ').toUpperCase()+(q.name?' · 종목명 '+q.name:''):'서버 응답에 PER/PBR 등 재무 필드가 없습니다 → 이름·가격만 가능, 재무는 직접 입력/붙여넣기','응답 앞부분: '+JSON.stringify(j).slice(0,200));
+  $('#c-test').disabled=false;msg(log.join('\n'));return}
+ $('#c-test').disabled=false;msg(log.join('\n')+'\n\n모든 방식이 실패했습니다. 주소·비밀키를 확인하고, 서버가 비밀키를 읽는 헤더 이름(APP_SHARED_SECRET 검색)을 알려 주세요.')}
+async function loadFromServer(){if(loading)return;const c=db.conn;
+ if(!c.url||!c.secret){$('#c-prog').textContent='먼저 서버 주소와 비밀키를 넣고 연결 테스트를 하세요.';return}
+ db.uni=$('#c-uni').value;save();const list=String(db.uni).split(/\r?\n/).map(l=>l.trim().match(/^(\d{6})\s*(.*)$/)).filter(Boolean).map(m=>[m[1],m[2].trim()]);
+ if(!list.length){$('#c-prog').textContent='불러올 종목이 없습니다.';return}
+ loading=true;stopFlag=false;let done=0,idx=0,add=0,upd=0;const fail=[],nofin=[];$('#c-load').disabled=true;
+ const worker=async()=>{while(idx<list.length&&!stopFlag){const[code,nm]=list[idx++];
+  try{const q=parseQuote(await httpJSON('/price/'+code,c.mode,20000));const ex=db.stocks.find(s=>s.tick===code);
+   if(ex){if(Object.keys(q.fin).length){ex.fin=Object.assign(ex.fin||{},q.fin);upd++}else nofin.push(ex.name)}
+   else if(Object.keys(q.fin).length){db.stocks.push({id:'m'+code,name:nm||q.name||code,tick:code,fin:q.fin,memo:'서버 불러오기'});add++}
+   else nofin.push(nm||code)}catch(e){fail.push((nm||code)+': '+(e.message||'실패'))}
+  done++;$('#c-prog').textContent=`불러오는 중 ${done}/${list.length}`}};
+ await Promise.all([worker(),worker(),worker()]);
+ loading=false;$('#c-load').disabled=false;save();
+ $('#c-prog').textContent=`완료: 새로 ${add}개, 갱신 ${upd}개${nofin.length?` · 재무 필드 없음 ${nofin.length}개(추가 안 됨)`:''}${fail.length?` · 실패 ${fail.length}개(${fail.slice(0,2).join(' / ')})`:''}${stopFlag?' · 중단됨':''}`;
+ refreshMiss();if(add||upd)render()}
+$('#gear').onclick=()=>{const c=db.conn;$('#c-url').value=c.url;$('#c-secret').value=c.secret;$('#c-mode').value=c.mode;$('#c-uni').value=db.uni;msg('');$('#c-prog').textContent='';
+ $('#json').value=JSON.stringify({stocks:db.stocks});refreshMiss();$('#ds').showModal()};
+$('#dsx').onclick=()=>$('#ds').close();$('#c-test').onclick=testConn;$('#c-load').onclick=loadFromServer;$('#c-stop').onclick=()=>{stopFlag=true};
+$('#cp').onclick=()=>{$('#json').select();document.execCommand('copy')};
+$('#imp').onclick=()=>{try{const o=JSON.parse($('#json').value);if(!Array.isArray(o.stocks))throw 0;db.stocks=o.stocks;db.seeded=true;save();$('#ds').close();render()}catch(e){alert('JSON 형식이 올바르지 않습니다')}};
 if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
 render();
 </script></body></html>
