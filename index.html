@@ -55,6 +55,7 @@ dialog::backdrop{background:#000a}
 <div class="row" style="margin-bottom:2px;gap:6px">
 <button class="btn pri" id="add">＋ 종목 추가</button>
 <button class="btn" id="imp2">📥 시장 종목 불러오기</button>
+<button class="btn" id="held">★ 보유만</button>
 <button class="btn" id="edit" style="display:none">이 종목 수정</button>
 </div>
 <div id="view"></div>
@@ -81,6 +82,11 @@ dialog::backdrop{background:#000a}
 <p class="sub" id="pmsg" style="margin:6px 0"></p>
 <div class="row"><button class="btn pri" id="pgo">불러오기</button><button class="btn" id="phd">제목줄 복사</button><button class="btn" id="pcl">닫기</button></div></dialog>
 <dialog id="ds"><div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0;color:var(--gold)">⚙ 설정</h2><button class="btn" id="dsx">닫기</button></div>
+<div class="card"><h2>📂 포트폴리오 PWA 보유종목</h2>
+<p class="sub" style="margin:0 0 4px">같은 주소(도메인)에 올린 포트폴리오 앱의 보유종목을 열 때마다 자동으로 읽어 추가합니다(종목명·코드·수량·평균매입가). 주소가 다르면 포트폴리오 앱의 백업 JSON을 아래 💾 백업/복원 칸에 붙여넣어 복원하세요 — 보유종목으로 합쳐집니다.</p>
+<label style="display:flex;gap:8px;align-items:center;color:var(--tx)"><input type="checkbox" id="autohold" style="width:auto"> 앱을 열 때 자동으로 불러오기</label>
+<div class="row" style="margin-top:8px"><button class="btn pri" id="holdnow">지금 불러오기</button></div>
+<p class="sub" id="holdmsg" style="margin:6px 0 0"></p></div>
 <div class="card"><h2>🔌 시세 서버 연결</h2>
 <p class="sub" style="margin:0 0 4px">기존 KIS 프록시에서 종목의 이름·PER·PBR(·ROE)을 불러옵니다. GitHub Pages 등 직접 올린 주소에서만 동작하며, 비밀키는 이 브라우저에만 저장됩니다(백업 제외).</p>
 <label>프록시 서버 주소</label><input id="c-url">
@@ -118,6 +124,7 @@ const SEEDS=[
 if(!db.seeded&&!db.stocks.length){SEEDS.forEach((s,i)=>db.stocks.push({id:'seed'+i,...s}));db.seeded=true;save()}
 const $=s=>document.querySelector(s),has=x=>x!=null&&!isNaN(x);
 const clamp=(x,a=0,b=100)=>Math.max(a,Math.min(b,x));
+const num=x=>Number(x).toLocaleString('ko-KR',{maximumFractionDigits:2});
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const val=id=>{const v=$(id).value.trim();return v===''?null:parseFloat(v)};
 const FK=['per','pbr','roe','debt','opm','revg','epsg','ocf'];
@@ -188,15 +195,15 @@ function analyze(s){const f=s.fin||{},res=LENS.map(L=>L(f));const ok=res.filter(
  return{s,f,res,avg:ok.length?Math.round(ok.reduce((a,b)=>a+b.score,0)/ok.length):-1,cov:FK.filter(k=>has(f[k])).length}}
 const sc=(r)=>r.na?-1:r.score;
 /* ---------- 화면 ---------- */
-let tab='all',detail=null;
+let tab='all',detail=null,onlyHeld=false;
 const TABS=['종합','버핏','멍거','피셔','린치','클라먼','막스'];
 const tkey=i=>i===0?'all':i-1;
 function drawTabs(){$('#tabs').innerHTML=TABS.map((t,i)=>`<button class="chip ${tab===tkey(i)?'on':''}" data-t="${tkey(i)}">${t}</button>`).join('')}
 const mini=res=>res.map((r,i)=>`<span class="mini" style="background:${col(r.score,r.na)}">${TABS[i+1][0]}${r.na?'–':r.score}</span>`).join('');
 const ptsHTML=r=>`<ul class="pts">${r.pts.map(p=>`<li class="${p[0]===true?'ok':p[0]===false?'no':'na'}">${p[1]}</li>`).join('')}</ul>`;
 const cov=a=>a.cov<4?`<span class="sub"> · 입력 ${a.cov}/8 (적음)</span>`:`<span class="sub"> · 입력 ${a.cov}/8</span>`;
-function lensItem(a,i,rank){const r=a.res[i];return`<details class="card"><summary><span class="rk" style="min-width:20px">${rank}</span><span class="sc" style="background:${col(r.score,r.na)}">${r.na?'–':r.score}</span><span class="who">${esc(a.s.name)}<small>${r.verdict.split(' — ')[0]}${a.cov<4?' · 재무 입력 적음':''}</small></span></summary><div class="verd">${r.verdict}</div>${ptsHTML(r)}<div class="row" style="margin-top:10px"><button class="btn" data-open="${a.s.id}">종합 상세 →</button></div></details>`}
-function stkCard(a,rank,extra){return`<div class="card stk" data-id="${a.s.id}"><div class="row" style="justify-content:space-between;align-items:center"><div><span class="rk">${rank}위</span> <b style="font-size:16px">${esc(a.s.name)}</b> <span class="sub">${esc(a.s.tick||'')}</span></div><div class="big" style="font-size:30px;color:${col(a.avg,a.avg<0)}">${a.avg<0?'–':a.avg}</div></div><div class="bar"><i style="width:${Math.max(a.avg,0)}%;background:${col(a.avg,a.avg<0)}"></i></div><div style="margin-top:6px">${mini(a.res)}${extra||''}${cov(a)}</div></div>`}
+function lensItem(a,i,rank){const r=a.res[i];return`<details class="card"><summary><span class="rk" style="min-width:20px">${rank}</span><span class="sc" style="background:${col(r.score,r.na)}">${r.na?'–':r.score}</span><span class="who">${esc(a.s.name)} ${a.s.held?'<span class="mini" style="background:#e8b84a">보유</span>':''}<small>${r.verdict.split(' — ')[0]}${a.cov<4?' · 재무 입력 적음':''}</small></span></summary><div class="verd">${r.verdict}</div>${ptsHTML(r)}<div class="row" style="margin-top:10px"><button class="btn" data-open="${a.s.id}">종합 상세 →</button></div></details>`}
+function stkCard(a,rank,extra){return`<div class="card stk" data-id="${a.s.id}"><div class="row" style="justify-content:space-between;align-items:center"><div><span class="rk">${rank}위</span> <b style="font-size:16px">${esc(a.s.name)}</b> ${a.s.held?'<span class="mini" style="background:#e8b84a">보유</span>':''}<span class="sub">${esc(a.s.tick||'')}</span></div><div class="big" style="font-size:30px;color:${col(a.avg,a.avg<0)}">${a.avg<0?'–':a.avg}</div></div><div class="bar"><i style="width:${Math.max(a.avg,0)}%;background:${col(a.avg,a.avg<0)}"></i></div><div style="margin-top:6px">${mini(a.res)}${extra||''}${cov(a)}</div></div>`}
 function radar(r){const N=r.length,cx=140,cy=130,R=95;
  const pt=(i,rad)=>{const a=-Math.PI/2+i*2*Math.PI/N;return(cx+rad*Math.cos(a)).toFixed(1)+','+(cy+rad*Math.sin(a)).toFixed(1)};
  let g='';for(const k of[.25,.5,.75,1])g+=`<polygon points="${r.map((_,i)=>pt(i,R*k)).join(' ')}" fill="none" stroke="#27324b"/>`;
@@ -226,6 +233,7 @@ function renderDetail(s){const a=analyze(s),{f,res,avg}=a,v=$('#view');
  ${tile('부채비율',f.debt,f.debt+'%',f.debt<=100)}${tile('영업이익률',f.opm,f.opm+'%',f.opm>=10)}${tile('영업현금흐름',f.ocf,f.ocf>0?'플러스':'마이너스',f.ocf>0)}
  ${tile('매출 성장',f.revg,f.revg+'%',f.revg>=10)}${tile('EPS 성장',f.epsg,f.epsg+'%',f.epsg>=10)}</div>
  ${s.memo?`<p class="sub" style="margin:10px 0 0">📝 ${esc(s.memo)}</p>`:''}<p class="sub" style="margin:6px 0 0">초록=거장들이 선호하는 기준 충족, 빨강=기준 미달(참고용)</p></div>
+ ${s.held?`<div class="card"><h2>📂 보유 현황 <span class="sub">(포트폴리오 앱 기준)</span></h2><div class="grid"><div class="kv"><span>보유 수량</span><b>${num(s.qty)}</b></div><div class="kv"><span>평균매입가</span><b>${num(s.avg)}</b></div>${has(s.cur)&&s.cur>0&&s.avg>0?`<div class="kv"><span>수익률</span><b class="${s.cur>=s.avg?'up':'dn'}">${((s.cur/s.avg-1)*100).toFixed(1)}%</b></div>`:''}</div></div>`:''}
  ${a.cov<8?`<div class="card"><h2>🔎 부족한 항목 웹검색으로 참조</h2><div class="row"><a class="btn" target="_blank" rel="noopener" href="${gl(s)}">구글 검색</a>${s.tick?`<a class="btn" target="_blank" rel="noopener" href="https://finance.naver.com/item/main.naver?code=${s.tick}">네이버증권</a><a class="btn" target="_blank" rel="noopener" href="https://comp.fnguide.com/SVO2/ASP/SVD_Main.asp?pGB=1&gicode=A${s.tick}">FnGuide</a>`:''}<button class="btn pri" data-aiq="${s.id}">🤖 AI 질문문 복사</button></div><p class="sub" style="margin:6px 0 0">질문문을 Claude(웹검색 켜기)에 붙여넣고, 받은 표를 메인의 📥 시장 종목 불러오기에 붙여넣으면 채워집니다.</p></div>`:''}
  <div class="card"><h2>여섯 거장의 관점</h2>${res.map(r=>`<details class="l" open><summary><span class="sc" style="background:${col(r.score,r.na)}">${r.na?'–':r.score}</span><span class="who">${r.who}<small>${r.sub}</small></span></summary>
  <div class="verd">${r.verdict}</div>${ptsHTML(r)}<p class="philo">${r.philo}</p></details>`).join('')}</div>`;
@@ -233,7 +241,8 @@ function renderDetail(s){const a=analyze(s),{f,res,avg}=a,v=$('#view');
 function render(){drawTabs();$('#edit').style.display=detail?'':'none';
  const s=db.stocks.find(x=>x.id===detail);if(s){renderDetail(s);return}detail=null;const v=$('#view');
  if(!db.stocks.length){v.innerHTML='<div class="card"><h2>시작하기</h2><p>＋ 종목 추가로 PER·ROE·부채비율 등 재무 지표를 입력하면, 종합 순위와 여섯 거장별 “추천 예측”이 만들어집니다.</p><p class="sub">입력 창의 <b>샘플</b> 버튼으로 예시를 볼 수 있어요.</p></div>';return}
- const A=db.stocks.map(analyze);
+ const A=db.stocks.filter(s=>!onlyHeld||s.held).map(analyze);
+ if(!A.length){v.innerHTML='<div class="card"><h2>보유종목 없음</h2><p class="sub" style="margin:0">포트폴리오 앱에서 불러온 보유종목이 없습니다. ⚙ 설정 → 📂에서 확인하세요.</p></div>';return}
  if(tab==='all'){
   const by=[...A].sort((a,b)=>b.avg-a.avg);
   const common=by.filter(a=>a.res.filter(r=>!r.na&&r.score>=70).length>=3);
@@ -283,6 +292,28 @@ $('#f').addEventListener('submit',e=>{if(e.submitter&&e.submitter.value!=='ok')r
  if(!editing)db.stocks.push(o);detail=o.id;save();render()});
 $('#del').onclick=()=>{if(editing&&confirm('삭제할까요?')){db.stocks=db.stocks.filter(x=>x!==editing);detail=null;save();$('#dlg').close();render()}};
 $('#sample').onclick=()=>{$('#name').value='샘플기업';const v={per:16,pbr:2.1,roe:18,debt:70,opm:17,ocf:500,revg:14,epsg:18};for(const k in v)$('#f_'+k).value=v[k];$('#memo').value='예시 데이터'};
+/* ---------- 포트폴리오 PWA 보유종목 자동 불러오기 ---------- */
+const code6=c=>{const d=String(c||'').replace(/\D/g,'');return d&&d.length<=6?d.padStart(6,'0'):''};
+function readPortfolio(){let best=null;try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k===K)continue;let o;try{o=JSON.parse(localStorage.getItem(k))}catch(e){continue}
+ if(o&&Array.isArray(o.stocks)&&o.stocks.some(s=>s&&typeof s==='object'&&('buyPrice' in s))&&(!best||o.stocks.length>best.stocks.length))best=o}}catch(e){}return best}
+function syncHoldings(o){const list=(o.stocks||[]).filter(s=>s&&String(s.name||'').trim()&&(toNum(s.qty)||0)>0);let add=0;const seen=new Set();
+ list.forEach(s=>{const name=String(s.name).trim(),tick=code6(s.code),q=toNum(s.qty),b=toNum(s.buyPrice),c=toNum(s.curPrice);
+  let ex=db.stocks.find(x=>(tick&&x.tick===tick)||x.name===name);
+  if(ex){ex.held=true;if(!ex.tick&&tick)ex.tick=tick}else{ex={id:'h'+(tick||name),name,tick,fin:{},memo:'포트폴리오 보유종목'};db.stocks.push(ex);add++}
+  ex.held=true;ex.qty=q;ex.avg=b;if(c)ex.cur=c;seen.add(ex.id)});
+ db.stocks.forEach(s=>{if(s.held&&!seen.has(s.id))s.held=false});
+ if(!db.conn.secret&&o.appSecret){db.conn.secret=String(o.appSecret);if(o.proxyUrl)db.conn.url=String(o.proxyUrl)}
+ db.lastHold={t:Date.now(),n:list.length};save();return{n:list.length,add}}
+function holdMsg(){const e=$('#holdmsg');if(!e)return;const o=db.lastHold;e.textContent=o?`마지막 불러오기: 보유종목 ${o.n}개 (${new Date(o.t).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})})`:'아직 불러온 적이 없습니다.'}
+function autoHold(manual){const o=readPortfolio();
+ if(!o){if(manual){$('#holdmsg').textContent='포트폴리오 앱의 데이터를 찾지 못했습니다. 두 앱이 같은 주소(예: kangkm6-ctrl.github.io)에 있어야 자동으로 읽힙니다. 아니면 백업 JSON을 복원 칸에 붙여넣으세요.'}return}
+ const r=syncHoldings(o);render();if(manual||r.add)toast(`보유종목 ${r.n}개 불러옴${r.add?` (새로 ${r.add}개)`:''}`);holdMsg()}
+let aqDone=false;
+async function detectMode(){const c=db.conn,modes=[c.mode,...MODES].filter((m,i,a)=>a.indexOf(m)===i);for(const m of modes){try{await httpJSON('/price/005930',m,40000);c.mode=m;c.verified=true;save();return}catch(e){}}throw new Error('mode')}
+async function autoQuote(){if(aqDone)return;const c=db.conn;if(!c.url||!c.secret)return;const t=db.stocks.filter(s=>s.held&&s.tick&&!has((s.fin||{}).per)&&!has((s.fin||{}).pbr));if(!t.length)return;aqDone=true;
+ try{if(!c.verified)await detectMode()}catch(e){return}
+ let i=0;const w=async()=>{while(i<t.length){const s=t[i++];try{const q=parseQuote(await httpJSON('/price/'+s.tick,c.mode,20000));if(Object.keys(q.fin).length)s.fin=Object.assign(s.fin||{},q.fin)}catch(e){}}};
+ await Promise.all([w(),w(),w()]);save();render()}
 /* ---------- 웹검색 보충 ---------- */
 const gl=s=>'https://www.google.com/search?q='+encodeURIComponent((s.name||'')+' '+(s.tick||'')+' ROE 부채비율 영업이익률 PER PBR 최신');
 function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',2200)}
@@ -355,7 +386,7 @@ async function testConn(){const c=db.conn;
  $('#c-test').disabled=false;msg(log.join('\n')+'\n\n모든 방식이 실패했습니다. 주소·비밀키를 확인하고, 서버가 비밀키를 읽는 헤더 이름(APP_SHARED_SECRET 검색)을 알려 주세요.')}
 async function loadFromServer(){if(loading)return;const c=db.conn;
  if(!c.url||!c.secret){$('#c-prog').textContent='먼저 서버 주소와 비밀키를 넣고 연결 테스트를 하세요.';return}
- db.uni=$('#c-uni').value;save();const list=String(db.uni).split(/\r?\n/).map(l=>l.trim().match(/^(\d{6})\s*(.*)$/)).filter(Boolean).map(m=>[m[1],m[2].trim()]);
+ db.uni=$('#c-uni').value;save();const list=String(db.uni).split(/\r?\n/).map(l=>l.trim().match(/^(\d{6})\s*(.*)$/)).filter(Boolean).map(m=>[m[1],m[2].trim()]);db.stocks.filter(s=>s.held&&s.tick&&!list.some(x=>x[0]===s.tick)).forEach(s=>list.unshift([s.tick,s.name]));
  if(!list.length){$('#c-prog').textContent='불러올 종목이 없습니다.';return}
  loading=true;stopFlag=false;let done=0,idx=0,add=0,upd=0;const fail=[],nofin=[];$('#c-load').disabled=true;
  const worker=async()=>{while(idx<list.length&&!stopFlag){const[code,nm]=list[idx++];
@@ -369,10 +400,12 @@ async function loadFromServer(){if(loading)return;const c=db.conn;
  $('#c-prog').textContent=`완료: 새로 ${add}개, 갱신 ${upd}개${nofin.length?` · 재무 필드 없음 ${nofin.length}개(추가 안 됨)`:''}${fail.length?` · 실패 ${fail.length}개(${fail.slice(0,2).join(' / ')})`:''}${stopFlag?' · 중단됨':''}`;
  refreshMiss();if(add||upd)render()}
 $('#gear').onclick=()=>{const c=db.conn;$('#c-url').value=c.url;$('#c-secret').value=c.secret;$('#c-mode').value=c.mode;$('#c-uni').value=db.uni;msg('');$('#c-prog').textContent='';
- $('#json').value=JSON.stringify({stocks:db.stocks});refreshMiss();$('#ds').showModal()};
-$('#dsx').onclick=()=>$('#ds').close();$('#c-test').onclick=testConn;$('#c-load').onclick=loadFromServer;$('#c-stop').onclick=()=>{stopFlag=true};
+ $('#json').value=JSON.stringify({stocks:db.stocks});refreshMiss();$('#autohold').checked=db.autoHold!==false;holdMsg();$('#ds').showModal()};
+$('#dsx').onclick=()=>$('#ds').close();$('#holdnow').onclick=()=>autoHold(true);$('#autohold').onchange=e=>{db.autoHold=e.target.checked;save()};$('#held').onclick=()=>{onlyHeld=!onlyHeld;$('#held').classList.toggle('pri',onlyHeld);render()};$('#c-test').onclick=testConn;$('#c-load').onclick=loadFromServer;$('#c-stop').onclick=()=>{stopFlag=true};
 $('#cp').onclick=()=>{$('#json').select();document.execCommand('copy')};
-$('#imp').onclick=()=>{try{const o=JSON.parse($('#json').value);if(!Array.isArray(o.stocks))throw 0;db.stocks=o.stocks;db.seeded=true;save();$('#ds').close();render()}catch(e){alert('JSON 형식이 올바르지 않습니다')}};
+$('#imp').onclick=()=>{try{const o=JSON.parse($('#json').value);if(!Array.isArray(o.stocks))throw 0;if(o.stocks.some(s=>s&&('buyPrice' in s)&&!s.fin)){const r=syncHoldings(o);$('#ds').close();render();toast(`보유종목 ${r.n}개 반영 (새로 ${r.add}개)`);return}db.stocks=o.stocks;db.seeded=true;save();$('#ds').close();render()}catch(e){alert('JSON 형식이 올바르지 않습니다')}};
 if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
 render();
+if(db.autoHold!==false){autoHold(false);document.addEventListener('visibilitychange',()=>{if(!document.hidden)autoHold(false)})}
+autoQuote();
 </script></body></html>
