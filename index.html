@@ -70,10 +70,11 @@ dialog::backdrop{background:#000a}
 <div class="three"><div><label>PER(배)</label><input id="f_per" type="number" step="any"></div><div><label>PBR(배)</label><input id="f_pbr" type="number" step="any"></div><div><label>ROE(%)</label><input id="f_roe" type="number" step="any"></div></div>
 <div class="three"><div><label>부채비율(%)</label><input id="f_debt" type="number" step="any"></div><div><label>영업이익률(%)</label><input id="f_opm" type="number" step="any"></div><div><label>영업현금흐름</label><input id="f_ocf" type="number" step="any" placeholder="+/- 금액"></div></div>
 <div class="two"><div><label>매출 성장률(%/년)</label><input id="f_revg" type="number" step="any"></div><div><label>EPS 성장률(%/년)</label><input id="f_epsg" type="number" step="any"></div></div>
+<p class="sub" id="afmsg" style="margin:8px 0 0"></p>
 <label>메모 (투자 이유·출처)</label><textarea id="memo"></textarea>
 <div class="row" style="margin-top:14px;justify-content:space-between">
 <span class="row"><button class="btn pri" value="ok">저장</button><button class="btn" value="x" formnovalidate>취소</button></span>
-<span class="row"><button class="btn" type="button" id="sample">샘플</button><button class="btn dn" type="button" id="del">삭제</button></span></div>
+<span class="row"><button class="btn" type="button" id="afill">🔄 자동 채우기</button><button class="btn" type="button" id="sample">샘플</button><button class="btn dn" type="button" id="del">삭제</button></span></div>
 </form></dialog>
 
 <dialog id="dp"><h2 style="margin:0;color:var(--gold)">시장 종목 불러오기</h2>
@@ -284,7 +285,7 @@ $('#pgo').onclick=()=>{const msg=importText($('#ptxt').value);$('#pmsg').textCon
 let editing=null;
 function openForm(s){editing=s||null;$('#ftitle').textContent=s?'종목 수정':'종목 추가';
  const fin=(s&&s.fin)||{};$('#name').value=s?s.name:'';$('#tick').value=s?s.tick||'':'';$('#memo').value=s?s.memo||'':'';
- for(const k of FK)$('#f_'+k).value=fin[k]??'';$('#del').style.display=s?'':'none';$('#dlg').showModal()}
+ for(const k of FK)$('#f_'+k).value=fin[k]??'';$('#afmsg').textContent='';$('#del').style.display=s?'':'none';$('#dlg').showModal()}
 $('#add').onclick=()=>openForm();$('#edit').onclick=()=>{const s=db.stocks.find(x=>x.id===detail);if(s)openForm(s)};
 $('#f').addEventListener('submit',e=>{if(e.submitter&&e.submitter.value!=='ok')return;
  const o=editing||{id:Date.now()+''};o.name=$('#name').value.trim();o.tick=$('#tick').value.trim();o.memo=$('#memo').value.trim();
@@ -292,6 +293,29 @@ $('#f').addEventListener('submit',e=>{if(e.submitter&&e.submitter.value!=='ok')r
  if(!editing)db.stocks.push(o);detail=o.id;save();render()});
 $('#del').onclick=()=>{if(editing&&confirm('삭제할까요?')){db.stocks=db.stocks.filter(x=>x!==editing);detail=null;save();$('#dlg').close();render()}};
 $('#sample').onclick=()=>{$('#name').value='샘플기업';const v={per:16,pbr:2.1,roe:18,debt:70,opm:17,ocf:500,revg:14,epsg:18};for(const k in v)$('#f_'+k).value=v[k];$('#memo').value='예시 데이터'};
+/* ---------- 종목 추가 시 자동 채우기 ---------- */
+const nm=s=>String(s||'').replace(/\s/g,'');
+function uniList(){return String(db.uni||DEFAULT_UNI).split(/\r?\n/).map(l=>l.trim().match(/^(\d{6})\s*(.*)$/)).filter(Boolean).map(m=>[m[1],m[2].trim()]).concat(db.stocks.filter(s=>s.tick).map(s=>[s.tick,s.name]))}
+let afSeq=0;
+async function autoFill(silent){const seq=++afSeq,m=$('#afmsg');const say=t=>{if(seq===afSeq)m.textContent=t};
+ let name=$('#name').value.trim(),tick=code6($('#tick').value);
+ if(!tick&&name){const u=uniList().find(x=>nm(x[1])===nm(name));if(u){tick=u[0];$('#tick').value=tick}}
+ if(tick&&!name){const u=uniList().find(x=>x[0]===tick);if(u){name=u[1];$('#name').value=name}}
+ if(!tick){say(silent?'':'종목코드(6자리)를 입력하면 자동으로 채워집니다.');return}
+ if(tick!==$('#tick').value.trim())$('#tick').value=tick;
+ const c=db.conn;if(!c.url||!c.secret){say('⚙ 설정에서 연결(서버 주소·비밀키)을 하면 PER·PBR·ROE가 자동으로 채워집니다.');return}
+ say('서버에서 불러오는 중…');
+ try{if(!c.verified)await detectMode();
+  const q=parseQuote(await httpJSON('/price/'+tick,c.mode,20000));if(seq!==afSeq)return;
+  if(q.name&&!$('#name').value.trim())$('#name').value=q.name;
+  let n=0;for(const k in q.fin){const e=$('#f_'+k);if(e.value===''){e.value=q.fin[k];n++}}
+  const miss=FK.filter(k=>$('#f_'+k).value==='');
+  say(`${n?`자동으로 ${n}개 채웠습니다. `:''}${miss.length?`비어 있음: ${miss.map(k=>LBL[k]||k).join('·')} → 저장 후 ⚙ 설정의 웹검색 보충으로 채우세요.`:'모든 항목이 채워졌습니다.'}`)}
+ catch(e){say('서버에서 가져오지 못했습니다('+(e.message||e)+'). 연결을 확인하세요.')}}
+const LBL={per:'PER',pbr:'PBR',roe:'ROE',debt:'부채비율',opm:'영업이익률',ocf:'영업현금흐름',revg:'매출성장률',epsg:'EPS성장률'};
+$('#afill').onclick=()=>autoFill(false);
+$('#tick').addEventListener('input',()=>{if(!editing&&/^\d{6}$/.test($('#tick').value.trim()))autoFill(true)});
+$('#name').addEventListener('change',()=>{if(!editing)autoFill(true)});
 /* ---------- 포트폴리오 PWA 보유종목 자동 불러오기 ---------- */
 const code6=c=>{const d=String(c||'').replace(/\D/g,'');return d&&d.length<=6?d.padStart(6,'0'):''};
 function readPortfolio(){let best=null;try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k===K)continue;let o;try{o=JSON.parse(localStorage.getItem(k))}catch(e){continue}
