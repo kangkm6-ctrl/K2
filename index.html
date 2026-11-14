@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="ko"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f1420">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="여섯거장">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>여섯 거장의 눈 – 기본적 분석 투자</title>
+<style>
+:root{--bg:#0f1420;--card:#182033;--line:#27324b;--tx:#e9edf5;--sub:#8e9ab3;--gold:#e8b84a;--up:#5ad1a0;--dn:#ef6a6a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.55 -apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;padding-bottom:60px}
+header{padding:calc(14px + env(safe-area-inset-top)) 16px 4px;position:sticky;top:0;background:var(--bg);z-index:5;border-bottom:1px solid var(--line)}
+h1{font-size:18px;margin:0;color:var(--gold)}h1 small{display:block;color:var(--sub);font-size:12px;font-weight:400}
+main{padding:12px 14px;max-width:760px;margin:auto}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:8px 0 10px}
+.chip{flex:none;padding:7px 13px;border-radius:20px;border:1px solid var(--line);background:var(--card);color:var(--tx);font-size:14px}
+.chip.on{border-color:var(--gold);color:var(--gold)}
+button{font:inherit;cursor:pointer}
+.btn{padding:9px 14px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--tx)}
+.btn.pri{background:var(--gold);color:#1a1405;border-color:var(--gold);font-weight:700}.btn.dn{color:var(--dn)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:10px 0}
+.card h2{font-size:15px;margin:0 0 8px;color:var(--gold)}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.kv{background:#121a2b;border-radius:10px;padding:8px 10px}.kv b{display:block;font-size:16px}.kv span{color:var(--sub);font-size:12px}
+.up{color:var(--up)}.dn{color:var(--dn)}.sub{color:var(--sub);font-size:13px}
+.big{font-size:44px;font-weight:800;line-height:1}
+.bar{height:10px;border-radius:6px;background:#121a2b;overflow:hidden;margin-top:6px}.bar i{display:block;height:100%}
+details.l{border-top:1px solid var(--line);padding:10px 0}details.l:first-of-type{border:0}
+summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px}summary::-webkit-details-marker{display:none}
+.sc{min-width:46px;text-align:center;font-weight:800;border-radius:8px;padding:3px 0;color:#0f1420}
+.who{font-weight:700}.who small{display:block;color:var(--sub);font-weight:400;font-size:12px}
+ul.pts{margin:8px 0 0;padding:0;list-style:none}ul.pts li{padding:3px 0 3px 22px;position:relative;font-size:14px}
+ul.pts li:before{position:absolute;left:0}.ok:before{content:"✔";color:var(--up)}.no:before{content:"✘";color:var(--dn)}.na:before{content:"•";color:var(--sub)}
+.verd{margin-top:8px;padding:8px 10px;border-radius:10px;background:#121a2b;font-size:14px}
+.philo{color:var(--sub);font-size:13px;margin:6px 0 0;font-style:italic}
+label{display:block;font-size:13px;color:var(--sub);margin:8px 0 3px}
+input,textarea{width:100%;padding:9px 10px;border-radius:9px;border:1px solid var(--line);background:#101828;color:var(--tx);font:inherit}
+textarea{min-height:70px;font-size:13px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+dialog{background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:16px;width:min(94vw,560px);max-height:92vh;padding:14px}
+dialog::backdrop{background:#000a}
+.disc{font-size:12px;color:var(--sub);margin:18px 4px}
+.stk{cursor:pointer}.mini{display:inline-block;font-size:11px;font-weight:700;color:#0f1420;border-radius:6px;padding:1px 6px;margin:2px 3px 0 0}.rk{color:var(--sub);font-size:12px}.grp{margin:16px 2px 4px;font-weight:700}
+.pend{position:relative;height:14px;border-radius:8px;background:linear-gradient(90deg,#5ad1a0,#7aa7ff 50%,#ef6a6a);margin:12px 0 4px}
+.pend i{position:absolute;top:-5px;width:6px;height:24px;background:#fff;border-radius:3px;transform:translateX(-3px)}
+</style></head><body>
+<header><h1>여섯 거장의 눈<small>버핏 · 멍거 · 피셔 · 린치 · 클라먼 · 막스 — 기본적 분석 투자</small></h1><div class="chips" id="tabs"></div></header>
+<main>
+<div class="row" style="margin-bottom:6px">
+<button class="btn pri" id="add">＋ 종목 추가</button>
+<button class="btn" id="edit" style="display:none">이 종목 수정</button>
+<button class="btn" id="data">백업/복원</button>
+</div>
+<div id="view"></div>
+<div class="disc">※ 이 앱은 투자 거장들의 공개된 원칙을 단순화해 재무 지표에 대입한 학습·점검용 도구입니다. 실제 인물의 평가나 투자 권유가 아니며, 모든 판단과 책임은 본인에게 있습니다. 재무 수치는 직접 확인해 입력하세요. 데이터는 이 기기(브라우저)에만 저장됩니다.</div>
+</main>
+
+<dialog id="dlg"><form method="dialog" id="f">
+<h2 style="margin:0;color:var(--gold)" id="ftitle">종목 입력</h2>
+<div class="two"><div><label>종목명</label><input id="name" required></div><div><label>종목코드(선택)</label><input id="tick"></div></div>
+<h2 style="margin:14px 0 0;font-size:14px;color:var(--gold)">재무 지표 (아는 것만 입력해도 됩니다)</h2>
+<div class="three"><div><label>PER(배)</label><input id="f_per" type="number" step="any"></div><div><label>PBR(배)</label><input id="f_pbr" type="number" step="any"></div><div><label>ROE(%)</label><input id="f_roe" type="number" step="any"></div></div>
+<div class="three"><div><label>부채비율(%)</label><input id="f_debt" type="number" step="any"></div><div><label>영업이익률(%)</label><input id="f_opm" type="number" step="any"></div><div><label>영업현금흐름</label><input id="f_ocf" type="number" step="any" placeholder="+/- 금액"></div></div>
+<div class="two"><div><label>매출 성장률(%/년)</label><input id="f_revg" type="number" step="any"></div><div><label>EPS 성장률(%/년)</label><input id="f_epsg" type="number" step="any"></div></div>
+<label>메모 (투자 이유·출처)</label><textarea id="memo"></textarea>
+<div class="row" style="margin-top:14px;justify-content:space-between">
+<span class="row"><button class="btn pri" value="ok">저장</button><button class="btn" value="x" formnovalidate>취소</button></span>
+<span class="row"><button class="btn" type="button" id="sample">샘플</button><button class="btn dn" type="button" id="del">삭제</button></span></div>
+</form></dialog>
+
+<dialog id="dd"><h2 style="margin:0;color:var(--gold)">백업 / 복원</h2>
+<p class="sub">JSON을 복사해 보관하거나, 붙여넣어 복원하세요.</p><textarea id="json" style="min-height:180px"></textarea>
+<div class="row" style="margin-top:10px"><button class="btn pri" id="imp">복원</button><button class="btn" id="cp">복사</button><button class="btn" id="cl">닫기</button></div></dialog>
+
+<script>
+const K='sixmasters_v1';
+let db;try{db=JSON.parse(localStorage.getItem(K))||{}}catch(e){db={}}
+db.stocks=db.stocks||[];
+['scan','conn','uni','sel'].forEach(k=>delete db[k]); /* 이전(기술적 분석) 버전 데이터 정리 */
+db.stocks.forEach(s=>{delete s.ser;delete s.man;delete s.uni;s.fin=s.fin||{}});
+const save=()=>{try{localStorage.setItem(K,JSON.stringify(db));return true}catch(e){return false}};
+const SEEDS=[
+ {name:'기아',tick:'000270',fin:{per:5.8,roe:13.4,opm:8.1,revg:7,epsg:-19},memo:'밸류에이션 시트(251130) 2025 기준'},
+ {name:'삼양식품',tick:'003230',fin:{per:26.4,roe:37.9,opm:22.5,revg:38,epsg:52},memo:'밸류에이션 시트(251201) 2025 기준'},
+ {name:'SK하이닉스',tick:'000660',fin:{per:10,roe:41.7,opm:45.8,revg:40,epsg:95},memo:'밸류에이션 시트(251201) 2025 기준'},
+ {name:'피엔티',tick:'137400',fin:{per:6.9,roe:26.5,debt:159,opm:15.8,revg:90,epsg:97,ocf:381},memo:'밸류에이션 시트(251201) 2024 기준'},
+ {name:'시프트업',tick:'462870',fin:{per:14.7,pbr:1.8,roe:13.3,debt:18,opm:50.8,revg:-29,epsg:-31,ocf:1570},memo:'밸류에이션 시트(260701) 2026 기준'}];
+if(!db.seeded&&!db.stocks.length){SEEDS.forEach((s,i)=>db.stocks.push({id:'seed'+i,...s}));db.seeded=true;save()}
+const $=s=>document.querySelector(s),has=x=>x!=null&&!isNaN(x);
+const clamp=(x,a=0,b=100)=>Math.max(a,Math.min(b,x));
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const val=id=>{const v=$(id).value.trim();return v===''?null:parseFloat(v)};
+const FK=['per','pbr','roe','debt','opm','revg','epsg','ocf'];
+/* ---------- 여섯 거장 (재무 기준) ---------- */
+const wavg=p=>{const w=p.reduce((a,b)=>a+b[1],0);return w?p.reduce((a,b)=>a+b[0]*b[1],0)/w:0};
+const verdict=(s,a)=>s>=70?a[0]:s>=50?a[1]:a[2];
+function mk(who,sub,parts,pts,vd,philo,need){
+ if(!parts.length)return{who,sub,na:true,score:0,pts:[[null,'필요한 재무 입력이 없어 판단할 수 없습니다 → '+need]],verdict:'데이터 부족 — 판단 보류',philo};
+ const s=Math.round(clamp(wavg(parts)));return{who,sub,score:s,pts,verdict:verdict(s,vd),philo}}
+function buffett(f){const P=[],T=[];
+ if(has(f.roe)){P.push([f.roe>=20?100:f.roe>=15?85:f.roe>=10?55:20,.3]);T.push([f.roe>=15,`ROE ${f.roe}% — 15%↑가 꾸준하면 좋은 사업의 흔적`])}
+ if(has(f.opm)){P.push([f.opm>=20?100:f.opm>=10?70:f.opm>=5?40:15,.2]);T.push([f.opm>=15,`영업이익률 ${f.opm}% — 높을수록 가격 결정력(해자)의 증거`])}
+ if(has(f.debt)){P.push([f.debt<=50?100:f.debt<=100?85:f.debt<=200?50:15,.15]);T.push([f.debt<=100,`부채비율 ${f.debt}% — 빌린 돈에 기대지 않는 기업`])}
+ if(has(f.ocf)){P.push([f.ocf>0?100:10,.15]);T.push([f.ocf>0,f.ocf>0?'영업현금흐름 플러스 — 이익이 현금으로 확인됨':'영업현금흐름 마이너스 — 이익의 질을 의심'])}
+ if(has(f.per)){P.push([f.per<=0?10:f.per<=12?100:f.per<=18?80:f.per<=25?50:20,.2]);T.push([f.per>0&&f.per<=20,`PER ${f.per}배 — 좋은 기업도 가격이 합리적이어야 함`])}
+ if(has(f.roe)&&has(f.per)&&f.roe>=15&&f.per>25)T.push([null,'훌륭한 사업이지만 비쌈 — 가격이 내려올 때까지 기다리는 것도 투자'])
+ return mk('워런 버핏','훌륭한 기업을 합리적인 가격에',P,T,['사고 싶은 기업 — 품질과 가격이 모두 양호','품질 또는 가격 중 하나가 아쉬움 — 더 지켜볼 것','버핏 기준 미달 — 해자와 안전한 재무가 보이지 않음'],'이해할 수 있고 오래 번영할 기업을, 시장이 겁낼 때 합리적 가격에 산다.','ROE·영업이익률·부채비율·현금흐름·PER')}
+function munger(f){let pen=0,n=0;const T=[];
+ const chk=(has_,bad,p,badT,goodT)=>{if(!has_)return;n++;if(bad){pen+=p;T.push([false,badT])}else T.push([true,goodT])};
+ chk(has(f.debt),f.debt>200,25,`부채비율 ${f.debt}% — 레버리지는 파멸의 지름길`,`부채비율 ${f.debt}% — 과도하지 않음`);
+ chk(has(f.roe),f.roe<8,20,`ROE ${f.roe}% — 자본 효율이 낮은 사업`,`ROE ${f.roe}% — 자본 효율 무난`);
+ chk(has(f.ocf),f.ocf<=0,20,'영업현금흐름 마이너스 — 이익이 현금으로 안 들어옴','영업현금흐름 플러스');
+ chk(has(f.per),f.per>40||f.per<=0,f.per<=0?25:15,f.per<=0?'PER 산출 불가(적자 가능) — 이익이 없다':`PER ${f.per}배 — 기대가 이미 가격에 반영`,`PER ${f.per}배 — 과열 수준은 아님`);
+ chk(has(f.opm),f.opm<5,15,`영업이익률 ${f.opm}% — 가격 결정력이 약함`,`영업이익률 ${f.opm}% — 최소한의 마진 확보`);
+ chk(has(f.epsg),f.epsg<0,15,`EPS ${f.epsg}% 감소 — 이익이 줄어드는 중`,`EPS 성장 ${f.epsg}%`);
+ chk(has(f.revg),f.revg<0,10,`매출 ${f.revg}% 감소 — 사업이 위축되는 중`,`매출 성장 ${f.revg}%`);
+ const r=mk('찰리 멍거','거꾸로 생각하라 — 어떻게 망할까?',n?[[clamp(100-pen),1]]:[],T,['망할 이유가 적음 — 단, 사업의 질은 따로 확인','주의 항목 점검 — 어리석음 목록을 다시 확인','일단 피하라 — 바보 같은 실수 확률이 높음'],'이길 방법보다 망할 이유를 먼저 찾는다. ✘가 곧 질문이다.','부채비율·ROE·현금흐름·PER·영업이익률 중 하나 이상');return r}
+function fisher(f){let e=0,mx=0;const T=[];
+ const add=(w,ok,t)=>{mx+=w;if(ok)e+=w;T.push([ok,t])};
+ if(has(f.revg))add(25,f.revg>=15,`매출 성장 ${f.revg}%/년 (15%↑ = 성장 여력)`);
+ if(has(f.epsg))add(25,f.epsg>=15,`EPS 성장 ${f.epsg}%/년 (이익이 따라오는가)`);
+ if(has(f.opm))add(20,f.opm>=15,`영업이익률 ${f.opm}% (경쟁사보다 높은 마진?)`);
+ if(has(f.roe))add(15,f.roe>=15,`ROE ${f.roe}% (성장하며 자본도 효율적)`);
+ if(has(f.ocf))add(10,f.ocf>0,f.ocf>0?'영업현금흐름 플러스 — 성장 자금을 스스로 조달':'영업현금흐름 마이너스 — 성장에 외부 자금이 필요');
+ if(has(f.debt))add(5,f.debt<=100,`부채비율 ${f.debt}%`);
+ T.push([null,'정량 점수는 일부일 뿐 — 신제품·R&D·경영진 정직성 같은 “15개 질문”은 직접 확인하세요']);
+ return mk('필립 피셔','위대한 성장 기업을 사서 오래 보유',mx?[[e/mx*100,1]]:[],T,['성장주의 재무 체력 우수 — 오래 쥘 만한 후보','성장은 있으나 일부 약점 — 논지 재확인','성장 기업의 요건 미달'],'매출과 이익이 오랫동안 시장보다 빠르게 크는 회사를 찾고, 논지가 유지되면 팔지 않는다.','매출성장률·EPS성장률·영업이익률·ROE')}
+function lynch(f){const P=[],T=[];const g=f.epsg;
+ if(has(g)){const cat=g>=20?'고속성장주':g>=10?'우량 성장주(Stalwart)':g>=0?'저성장주':'회생·경기순환 점검';
+  T.push([null,`분류: ${cat} (EPS 성장 ${g}%) — ${g>=20?'10루타 후보. 성장 둔화·고PER 주시':g>=10?'30~50% 수익이면 일부 차익 고려':g>=0?'배당 위주, 큰 수익 기대 금물':'바닥 확인·재무 점검 필수'}`])}
+ if(has(f.per)&&has(g)&&g>0&&f.per>0){const peg=f.per/g;P.push([peg<=1?100:peg<=1.5?65:peg<=2?35:10,.45]);T.push([peg<=1,`PEG ${peg.toFixed(2)} (PER÷성장률, 1 이하가 매력)`])}
+ else if(has(f.per)){P.push([f.per<=0?10:f.per<=10?100:f.per<=20?60:25,.3]);T.push([f.per>0&&f.per<=15,`PER ${f.per}배`])}
+ if(has(f.debt)){P.push([f.debt<=100?100:f.debt<=200?55:15,.15]);T.push([f.debt<=100,`부채비율 ${f.debt}% — 빚 많은 성장주는 위험`])}
+ if(has(f.ocf)){P.push([f.ocf>0?100:10,.15]);T.push([f.ocf>0,f.ocf>0?'영업현금흐름 플러스':'영업현금흐름 마이너스 — 재고·매출채권 증가 확인'])}
+ if(has(f.revg)&&has(g)){P.push([g<=f.revg*2+10?90:50,.15]);T.push([g<=f.revg*2+10,`매출 ${f.revg}% vs EPS ${g}% — 이익 성장이 매출에 뒷받침되는지`])}
+ return mk('피터 린치','아는 기업을 사라, PEG가 말해준다',P,T,['“장바구니에 담을 만함” — 이야기가 맞는지 확인','관찰 대상 — 이야기는 있으나 가격·재무 부담','매력 낮음 — 이야기보다 가격이나 재무가 불리'],'주가는 결국 이익을 따라간다. 성장 대비 싼 가격(PEG)이 핵심이다.','PER과 EPS성장률(또는 PER만)')}
+function klarman(f){const P=[],T=[];
+ if(has(f.pbr)){P.push([f.pbr<=0?10:f.pbr<=1?100:f.pbr<=1.5?70:f.pbr<=2.5?35:10,.3]);T.push([f.pbr>0&&f.pbr<=1.2,`PBR ${f.pbr}배 — 자산가치 대비 할인?`])}
+ if(has(f.per)){P.push([f.per<=0?5:f.per<=8?100:f.per<=12?80:f.per<=18?50:15,.25]);T.push([f.per>0&&f.per<=12,`PER ${f.per}배 — 이익 대비 싼 가격인가`])}
+ if(has(f.debt)){P.push([f.debt<=50?100:f.debt<=100?85:f.debt<=200?40:10,.2]);T.push([f.debt<=100,`부채비율 ${f.debt}% — 하방 방어력`])}
+ if(has(f.ocf)){P.push([f.ocf>0?100:10,.15]);T.push([f.ocf>0,f.ocf>0?'영업현금흐름 플러스 — 현금 창출 확인':'영업현금흐름 마이너스 — 손실 위험'])}
+ if(has(f.roe)){P.push([f.roe>=8?100:f.roe>0?55:5,.1]);T.push([f.roe>=8,`ROE ${f.roe}% — 자본을 갉아먹지 않는가`])}
+ if(has(f.per)&&f.per>25)T.push([false,'PER 25배↑ — 안전마진 없이 성장 기대만 사는 중. 현금이 더 나은 선택일 수 있음'])
+ return mk('세스 클라먼','안전마진, 손실 회피가 먼저',P,T,['안전마진 후보 — 하방 위험이 상대적으로 작음','안전마진 부족 — 더 싸질 때까지 인내','안전마진 없음 — 현금이 더 나은 선택일 수 있음'],'수익이 아니라 위험을 먼저 본다. 충분히 싸지 않으면 사지 않고 기다린다.','PBR·PER·부채비율·현금흐름·ROE')}
+function marks(f){const t=[],T=[];
+ if(has(f.per)&&f.per>0){const x=f.per<=10?15:f.per<=15?35:f.per<=20?50:f.per<=30?75:92;t.push(x);T.push([x<=50,`PER ${f.per}배 — 이익 대비 가격의 온도 ${x}/100`])}
+ else if(has(f.per)&&f.per<=0)T.push([false,'PER 산출 불가(적자 등) — 이익 기반 판단이 어려움']);
+ if(has(f.pbr)&&f.pbr>0){const x=f.pbr<=1?15:f.pbr<=2?40:f.pbr<=3.5?65:90;t.push(x);T.push([x<=50,`PBR ${f.pbr}배 — 자산 대비 가격의 온도 ${x}/100`])}
+ if(has(f.opm)&&has(f.epsg)&&f.opm>=30&&f.epsg>=50){t.push(88);T.push([false,`영업이익률 ${f.opm}%·EPS ${f.epsg}% 급증 — 정점 이익일 수 있음, 평균 회귀 주의(2차 사고)`])}
+ if(has(f.debt)&&f.debt>200)T.push([false,`부채비율 ${f.debt}% — 사이클이 꺾일 때 가장 먼저 다치는 구조`]);
+ const temp=t.length?t.reduce((a,b)=>a+b,0)/t.length:null;
+ if(temp!=null)T.unshift([null,`가치 온도 ${temp.toFixed(0)}/100 — ${temp>=80?'극단적 낙관(과열)':temp>=60?'낙관 우세':temp>=40?'중립':temp>=20?'비관 우세':'공포·투매 수준의 가격'}`]);
+ if(temp!=null)T.push([null,temp>=70?'2차 사고: 모두가 좋다고 할 때 가격엔 낙관이 이미 담겼다 — 위험을 줄일 때':temp<=35?'2차 사고: 모두가 외면할 때 기대수익이 커진다 — 단, 기업의 생존부터 확인':'진자의 중간 — 사이클 위치를 계속 관찰']);
+ const r=mk('하워드 막스','가격에 담긴 낙관 — 사이클 속 위치',temp!=null?[[100-temp,1]]:[],T,['공포·저평가 쪽 진자 — 공격 여지','중간 지대 — 균형 유지','탐욕·고평가 쪽 진자 — 방어 우선'],'사이클은 돌아온다. 미래를 맞히기보다 지금 가격에 담긴 기대를 읽는다.','PER 또는 PBR');r.temp=temp;return r}
+const LENS=[buffett,munger,fisher,lynch,klarman,marks];
+const col=(s,na)=>na?'#8e9ab3':s>=70?'#5ad1a0':s>=50?'#e8b84a':'#ef6a6a';
+function analyze(s){const f=s.fin||{},res=LENS.map(L=>L(f));const ok=res.filter(r=>!r.na);
+ return{s,f,res,avg:ok.length?Math.round(ok.reduce((a,b)=>a+b.score,0)/ok.length):-1,cov:FK.filter(k=>has(f[k])).length}}
+const sc=(r)=>r.na?-1:r.score;
+/* ---------- 화면 ---------- */
+let tab='all',detail=null;
+const TABS=['종합','버핏','멍거','피셔','린치','클라먼','막스'];
+const tkey=i=>i===0?'all':i-1;
+function drawTabs(){$('#tabs').innerHTML=TABS.map((t,i)=>`<button class="chip ${tab===tkey(i)?'on':''}" data-t="${tkey(i)}">${t}</button>`).join('')}
+const mini=res=>res.map((r,i)=>`<span class="mini" style="background:${col(r.score,r.na)}">${TABS[i+1][0]}${r.na?'–':r.score}</span>`).join('');
+const ptsHTML=r=>`<ul class="pts">${r.pts.map(p=>`<li class="${p[0]===true?'ok':p[0]===false?'no':'na'}">${p[1]}</li>`).join('')}</ul>`;
+const cov=a=>a.cov<4?`<span class="sub"> · 입력 ${a.cov}/8 (적음)</span>`:`<span class="sub"> · 입력 ${a.cov}/8</span>`;
+function lensItem(a,i,rank){const r=a.res[i];return`<details class="card"><summary><span class="rk" style="min-width:20px">${rank}</span><span class="sc" style="background:${col(r.score,r.na)}">${r.na?'–':r.score}</span><span class="who">${esc(a.s.name)}<small>${r.verdict.split(' — ')[0]}${a.cov<4?' · 재무 입력 적음':''}</small></span></summary><div class="verd">${r.verdict}</div>${ptsHTML(r)}<div class="row" style="margin-top:10px"><button class="btn" data-open="${a.s.id}">종합 상세 →</button></div></details>`}
+function stkCard(a,rank,extra){return`<div class="card stk" data-id="${a.s.id}"><div class="row" style="justify-content:space-between;align-items:center"><div><span class="rk">${rank}위</span> <b style="font-size:16px">${esc(a.s.name)}</b> <span class="sub">${esc(a.s.tick||'')}</span></div><div class="big" style="font-size:30px;color:${col(a.avg,a.avg<0)}">${a.avg<0?'–':a.avg}</div></div><div class="bar"><i style="width:${Math.max(a.avg,0)}%;background:${col(a.avg,a.avg<0)}"></i></div><div style="margin-top:6px">${mini(a.res)}${extra||''}${cov(a)}</div></div>`}
+function radar(r){const N=r.length,cx=140,cy=130,R=95;
+ const pt=(i,rad)=>{const a=-Math.PI/2+i*2*Math.PI/N;return(cx+rad*Math.cos(a)).toFixed(1)+','+(cy+rad*Math.sin(a)).toFixed(1)};
+ let g='';for(const k of[.25,.5,.75,1])g+=`<polygon points="${r.map((_,i)=>pt(i,R*k)).join(' ')}" fill="none" stroke="#27324b"/>`;
+ const poly=r.map((x,i)=>pt(i,R*(x.na?0:x.score)/100)).join(' ');
+ const lab=r.map((x,i)=>{const[xx,yy]=pt(i,R+22).split(',');return`<text x="${xx}" y="${yy}" fill="#8e9ab3" font-size="11" text-anchor="middle" dominant-baseline="middle">${x.who.split(' ')[0]}</text>`}).join('');
+ return`<svg viewBox="0 0 280 260" style="width:100%;max-width:340px;display:block;margin:auto">${g}<polygon points="${poly}" fill="#e8b84a33" stroke="#e8b84a" stroke-width="2"/>${lab}</svg>`}
+function renderDetail(s){const a=analyze(s),{f,res,avg}=a,v=$('#view');
+ const ok=res.filter(r=>!r.na),strong=ok.filter(x=>x.score>=70).length,weak=ok.filter(x=>x.score<50).length;
+ const head=avg<0?'재무 입력이 부족해 평가할 수 없음':avg>=70?'다수 거장이 호의적':avg>=55?'의견이 갈림 — 선별적 접근':'다수 거장이 신중/회피';
+ const pos=[],neg=[];res.forEach(r=>r.pts.forEach(p=>{if(p[0]===true)pos.push([r.who,p[1]]);else if(p[0]===false)neg.push([r.who,p[1]])}));
+ const best=[...ok].sort((x,y)=>y.score-x.score)[0],worst=[...ok].sort((x,y)=>x.score-y.score)[0];
+ const why=ok.length?`<div class="card" style="border-color:var(--gold)"><h2>💡 이 종목이 이렇게 평가된 근거</h2>
+ <p style="margin:0 0 8px">종합 <b style="color:${col(avg)}">${avg}점</b>. 가장 호의적인 시선은 <b>${best.who}</b>(${best.score}점: ${best.verdict.split(' — ')[0]}), 가장 신중한 시선은 <b>${worst.who}</b>(${worst.score}점: ${worst.verdict.split(' — ')[0]})입니다.</p>
+ ${pos.length?`<div class="sub">👍 긍정 근거</div><ul class="pts">${pos.slice(0,4).map(p=>`<li class="ok"><b>${p[0].split(' ')[1]}</b> · ${p[1]}</li>`).join('')}</ul>`:''}
+ ${neg.length?`<div class="sub" style="margin-top:6px">⚠️ 부정·주의 근거</div><ul class="pts">${neg.slice(0,4).map(p=>`<li class="no"><b>${p[0].split(' ')[1]}</b> · ${p[1]}</li>`).join('')}</ul>`:''}
+ <p class="sub" style="margin:8px 0 0">아래 거장별 카드에서 각자의 원칙과 판단 이유를 자세히 볼 수 있습니다.</p></div>`:'';
+ const tile=(l,x,d,okc)=>has(x)?`<div class="kv"><span>${l}</span><b class="${okc?'up':'dn'}">${d}</b></div>`:`<div class="kv"><span>${l}</span><b class="sub">미입력</b></div>`;
+ v.innerHTML=`<button class="btn" id="back">← 목록으로</button>
+ <div class="card"><div class="row" style="justify-content:space-between;align-items:center"><div><h2 style="margin:0">${esc(s.name)} <span class="sub">${esc(s.tick||'')}</span></h2><div class="sub">재무 입력 ${a.cov}/8${a.cov<4?' · 입력이 적어 정확도가 낮습니다':''}</div></div>
+ <div style="text-align:right"><div class="big" style="color:${col(avg,avg<0)}">${avg<0?'–':avg}</div><div class="sub">종합 점수</div></div></div>
+ <div class="bar"><i style="width:${Math.max(avg,0)}%;background:${col(avg,avg<0)}"></i></div>
+ <p style="margin:10px 0 0"><b>${head}</b> ${ok.length?`<span class="sub">(호의 ${strong} · 신중 ${weak} / ${ok.length}명)</span>`:''}</p>${radar(res)}</div>
+ ${why}
+ ${res[5].temp!=null?`<div class="card"><h2>가치 온도 (하워드 막스의 진자)</h2><div class="pend"><i style="left:${res[5].temp}%"></i></div><div class="row" style="justify-content:space-between"><span class="sub">저평가·공포</span><span class="sub">중립</span><span class="sub">고평가·탐욕</span></div></div>`:''}
+ <div class="card"><h2>재무 지표</h2><div class="grid">
+ ${tile('PER',f.per,f.per+'배',f.per>0&&f.per<=20)}${tile('PBR',f.pbr,f.pbr+'배',f.pbr>0&&f.pbr<=1.5)}${tile('ROE',f.roe,f.roe+'%',f.roe>=15)}
+ ${tile('부채비율',f.debt,f.debt+'%',f.debt<=100)}${tile('영업이익률',f.opm,f.opm+'%',f.opm>=10)}${tile('영업현금흐름',f.ocf,f.ocf>0?'플러스':'마이너스',f.ocf>0)}
+ ${tile('매출 성장',f.revg,f.revg+'%',f.revg>=10)}${tile('EPS 성장',f.epsg,f.epsg+'%',f.epsg>=10)}</div>
+ ${s.memo?`<p class="sub" style="margin:10px 0 0">📝 ${esc(s.memo)}</p>`:''}<p class="sub" style="margin:6px 0 0">초록=거장들이 선호하는 기준 충족, 빨강=기준 미달(참고용)</p></div>
+ <div class="card"><h2>여섯 거장의 관점</h2>${res.map(r=>`<details class="l" open><summary><span class="sc" style="background:${col(r.score,r.na)}">${r.na?'–':r.score}</span><span class="who">${r.who}<small>${r.sub}</small></span></summary>
+ <div class="verd">${r.verdict}</div>${ptsHTML(r)}<p class="philo">${r.philo}</p></details>`).join('')}</div>`;
+ $('#back').onclick=()=>{detail=null;render();scrollTo(0,0)}}
+function render(){drawTabs();$('#edit').style.display=detail?'':'none';
+ const s=db.stocks.find(x=>x.id===detail);if(s){renderDetail(s);return}detail=null;const v=$('#view');
+ if(!db.stocks.length){v.innerHTML='<div class="card"><h2>시작하기</h2><p>＋ 종목 추가로 PER·ROE·부채비율 등 재무 지표를 입력하면, 종합 순위와 여섯 거장별 “추천 예측”이 만들어집니다.</p><p class="sub">입력 창의 <b>샘플</b> 버튼으로 예시를 볼 수 있어요.</p></div>';return}
+ const A=db.stocks.map(analyze);
+ if(tab==='all'){
+  const by=[...A].sort((a,b)=>b.avg-a.avg);
+  const common=by.filter(a=>a.res.filter(r=>!r.na&&r.score>=70).length>=3);
+  v.innerHTML=`<div class="card"><h2>종합 순위</h2><p class="sub" style="margin:0">평가 가능한 거장 점수의 평균 순위입니다. 종목을 탭하면 상세 근거가 열립니다. (버·멍·피·린·클·막 = 각 거장 점수, – = 입력 부족)</p></div>`+
+  (common.length?`<div class="grp">🤝 3명 이상이 70점↑ 준 종목 (${common.length})</div>`+common.map(a=>stkCard(a,by.indexOf(a)+1)).join('')+`<div class="grp">📊 전체 순위</div>`:'')+
+  by.map((a,i)=>stkCard(a,i+1)).join('');return}
+ const i=tab,ex=A[0].res[i],S=[...A].sort((a,b)=>sc(b.res[i])-sc(a.res[i]));
+ const grp=(t,f)=>{const L=S.filter(a=>f(a.res[i]));return L.length?`<div class="grp">${t} (${L.length})</div>`+L.map(a=>lensItem(a,i,S.indexOf(a)+1)).join(''):''};
+ const n70=S.filter(a=>!a.res[i].na&&a.res[i].score>=70).length;
+ v.innerHTML=`<div class="card"><h2>${ex.who}</h2><div class="who"><small style="font-size:13px">${ex.sub}</small></div><p class="philo">${ex.philo}</p><p style="margin:10px 0 0"><b>${ex.who.split(' ')[1]}</b>이(가) 추구할 만한 종목: <b style="color:var(--up)">${n70}개</b> / ${S.length}개 <span class="sub">(70점↑ 추천 예측)</span></p></div>`+
+  grp('✅ 추천 예측',r=>!r.na&&r.score>=70)+grp('👀 관망',r=>!r.na&&r.score>=50&&r.score<70)+grp('⛔ 제외·회피',r=>!r.na&&r.score<50)+grp('❔ 데이터 부족',r=>r.na)+
+  '<p class="sub" style="margin:12px 4px">종목을 탭하면 이 거장 관점의 판단 근거가 펼쳐집니다. 재무 입력이 많을수록 정확합니다.</p>'}
+$('#tabs').onclick=e=>{const b=e.target.closest('.chip');if(!b)return;const t=b.dataset.t;tab=t==='all'?'all':+t;detail=null;render();scrollTo(0,0)};
+$('#view').onclick=e=>{const o=e.target.closest('[data-open]'),c=e.target.closest('.stk');const id=o?o.dataset.open:c?c.dataset.id:null;if(id){detail=id;render();scrollTo(0,0)}};
+/* ---------- 입력 ---------- */
+let editing=null;
+function openForm(s){editing=s||null;$('#ftitle').textContent=s?'종목 수정':'종목 추가';
+ const fin=(s&&s.fin)||{};$('#name').value=s?s.name:'';$('#tick').value=s?s.tick||'':'';$('#memo').value=s?s.memo||'':'';
+ for(const k of FK)$('#f_'+k).value=fin[k]??'';$('#del').style.display=s?'':'none';$('#dlg').showModal()}
+$('#add').onclick=()=>openForm();$('#edit').onclick=()=>{const s=db.stocks.find(x=>x.id===detail);if(s)openForm(s)};
+$('#f').addEventListener('submit',e=>{if(e.submitter&&e.submitter.value!=='ok')return;
+ const o=editing||{id:Date.now()+''};o.name=$('#name').value.trim();o.tick=$('#tick').value.trim();o.memo=$('#memo').value.trim();
+ o.fin={};for(const k of FK)o.fin[k]=val('#f_'+k);
+ if(!editing)db.stocks.push(o);detail=o.id;save();render()});
+$('#del').onclick=()=>{if(editing&&confirm('삭제할까요?')){db.stocks=db.stocks.filter(x=>x!==editing);detail=null;save();$('#dlg').close();render()}};
+$('#sample').onclick=()=>{$('#name').value='샘플기업';const v={per:16,pbr:2.1,roe:18,debt:70,opm:17,ocf:500,revg:14,epsg:18};for(const k in v)$('#f_'+k).value=v[k];$('#memo').value='예시 데이터'};
+$('#data').onclick=()=>{$('#json').value=JSON.stringify({stocks:db.stocks});$('#dd').showModal()};
+$('#cl').onclick=()=>$('#dd').close();$('#cp').onclick=()=>{$('#json').select();document.execCommand('copy')};
+$('#imp').onclick=()=>{try{const o=JSON.parse($('#json').value);if(!Array.isArray(o.stocks))throw 0;db.stocks=o.stocks;db.seeded=true;save();$('#dd').close();render()}catch(e){alert('JSON 형식이 올바르지 않습니다')}};
+if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+render();
+</script></body></html>
