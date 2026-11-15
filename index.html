@@ -65,12 +65,13 @@ dialog::backdrop{background:#000a}
 
 <dialog id="dlg"><form method="dialog" id="f">
 <h2 style="margin:0;color:var(--gold)" id="ftitle">종목 입력</h2>
-<div class="two"><div><label>종목명</label><input id="name" required></div><div><label>종목코드(선택)</label><input id="tick"></div></div>
+<div class="two"><div style="position:relative"><label>종목명 <span class="sub">(초성 검색 가능)</span></label><input id="name" required autocomplete="off"><div id="sg" style="display:none;position:absolute;left:0;right:0;top:100%;z-index:20;max-height:210px;overflow:auto;background:#1b1e4a;border:1px solid var(--gold);border-radius:8px"></div></div><div><label>종목코드(선택)</label><input id="tick"></div></div>
 <h2 style="margin:14px 0 0;font-size:14px;color:var(--gold)">재무 지표 (아는 것만 입력해도 됩니다)</h2>
 <div class="three"><div><label>PER(배)</label><input id="f_per" type="number" step="any"></div><div><label>PBR(배)</label><input id="f_pbr" type="number" step="any"></div><div><label>ROE(%)</label><input id="f_roe" type="number" step="any"></div></div>
 <div class="three"><div><label>부채비율(%)</label><input id="f_debt" type="number" step="any"></div><div><label>영업이익률(%)</label><input id="f_opm" type="number" step="any"></div><div><label>영업현금흐름</label><input id="f_ocf" type="number" step="any" placeholder="+/- 금액"></div></div>
 <div class="two"><div><label>매출 성장률(%/년)</label><input id="f_revg" type="number" step="any"></div><div><label>EPS 성장률(%/년)</label><input id="f_epsg" type="number" step="any"></div></div>
 <p class="sub" id="afmsg" style="margin:8px 0 0"></p>
+<button class="btn" type="button" id="afocf" style="margin-top:6px">🔍 영업현금흐름 웹검색 질문 복사</button>
 <label>메모 (투자 이유·출처)</label><textarea id="memo"></textarea>
 <div class="row" style="margin-top:14px;justify-content:space-between">
 <span class="row"><button class="btn pri" value="ok">저장</button><button class="btn" value="x" formnovalidate>취소</button></span>
@@ -102,7 +103,7 @@ dialog::backdrop{background:#000a}
 <p class="sub" id="c-prog" style="margin:6px 0 0"></p></div>
 <div class="card"><h2>🔎 부족한 재무 → 웹검색으로 채우기</h2>
 <p class="sub" style="margin:0 0 4px">서버는 PER·PBR 정도만 줍니다. 나머지(ROE·부채비율·영업이익률·성장률·현금흐름)는 아래 순서로 채우세요.<br>① 질문문 복사 → ② Claude(웹검색 켜기)에 붙여넣기 → ③ 답으로 나온 표를 복사해 메인의 <b>📥 시장 종목 불러오기</b>에 붙여넣기</p>
-<p id="c-miss" class="sub" style="margin:4px 0"></p><div class="row" id="c-missbtn"></div></div>
+<p id="c-miss" class="sub" style="margin:4px 0"></p><div class="row" id="c-missbtn"></div><div class="row" style="margin-top:6px"><button class="btn" type="button" id="c-ocf">🔍 영업현금흐름 전체 질문 복사</button></div></div>
 <div class="card"><h2>💾 백업 / 복원</h2>
 <p class="sub" style="margin:0 0 4px">종목 데이터를 JSON으로 복사해 보관하거나, 붙여넣어 복원합니다(비밀키 제외).</p>
 <textarea id="json" style="min-height:110px;font-size:12px"></textarea>
@@ -285,7 +286,7 @@ $('#pgo').onclick=()=>{const msg=importText($('#ptxt').value);$('#pmsg').textCon
 let editing=null;
 function openForm(s){editing=s||null;$('#ftitle').textContent=s?'종목 수정':'종목 추가';
  const fin=(s&&s.fin)||{};$('#name').value=s?s.name:'';$('#tick').value=s?s.tick||'':'';$('#memo').value=s?s.memo||'':'';
- for(const k of FK)$('#f_'+k).value=fin[k]??'';$('#afmsg').textContent='';$('#del').style.display=s?'':'none';$('#dlg').showModal()}
+ for(const k of FK)$('#f_'+k).value=fin[k]??'';$('#afmsg').textContent='';$('#sg').style.display='none';$('#del').style.display=s?'':'none';$('#dlg').showModal()}
 $('#add').onclick=()=>openForm();$('#edit').onclick=()=>{const s=db.stocks.find(x=>x.id===detail);if(s)openForm(s)};
 $('#f').addEventListener('submit',e=>{if(e.submitter&&e.submitter.value!=='ok')return;
  const o=editing||{id:Date.now()+''};o.name=$('#name').value.trim();o.tick=$('#tick').value.trim();o.memo=$('#memo').value.trim();
@@ -296,6 +297,15 @@ $('#sample').onclick=()=>{$('#name').value='샘플기업';const v={per:16,pbr:2.
 /* ---------- 종목 추가 시 자동 채우기 ---------- */
 const nm=s=>String(s||'').replace(/\s/g,'');
 function uniList(){return String(db.uni||DEFAULT_UNI).split(/\r?\n/).map(l=>l.trim().match(/^(\d{6})\s*(.*)$/)).filter(Boolean).map(m=>[m[1],m[2].trim()]).concat(db.stocks.filter(s=>s.tick).map(s=>[s.tick,s.name]))}
+const CHO='ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ';
+const cho=s=>[...String(s)].map(c=>{const n=c.charCodeAt(0)-44032;return n>=0&&n<11172?CHO[Math.floor(n/588)]:c}).join('');
+function suggest(){const g=$('#sg'),q=nm($('#name').value);if(editing||!q){g.style.display='none';return}
+ const seen=new Set(),isC=[...q].every(c=>CHO.includes(c)||/[a-z0-9]/i.test(c));
+ const r=uniList().filter(x=>!seen.has(x[0])&&seen.add(x[0])).filter(x=>{const n=nm(x[1]);return n.toLowerCase().includes(q.toLowerCase())||x[0].startsWith(q)||(isC&&cho(n).includes(q))}).sort((a,b)=>(cho(nm(a[1])).startsWith(q)||nm(a[1]).startsWith(q)?0:1)-(cho(nm(b[1])).startsWith(q)||nm(b[1]).startsWith(q)?0:1)).slice(0,30);
+ if(!r.length){g.style.display='none';return}
+ g.innerHTML=r.map(x=>`<div data-c="${x[0]}" data-n="${esc(x[1])}" style="padding:10px 12px;border-bottom:1px solid #2a2e66;display:flex;justify-content:space-between"><b>${esc(x[1])}</b><span class="sub">${x[0]}</span></div>`).join('');g.style.display='block';
+ [...g.children].forEach(d=>d.onclick=()=>{$('#name').value=d.dataset.n;$('#tick').value=d.dataset.c;g.style.display='none';autoFill(false)})}
+$('#name').addEventListener('input',suggest);
 let afSeq=0;
 async function autoFill(silent){const seq=++afSeq,m=$('#afmsg');const say=t=>{if(seq===afSeq)m.textContent=t};
  let name=$('#name').value.trim(),tick=code6($('#tick').value);
@@ -306,16 +316,17 @@ async function autoFill(silent){const seq=++afSeq,m=$('#afmsg');const say=t=>{if
  const c=db.conn;if(!c.url||!c.secret){say('⚙ 설정에서 연결(서버 주소·비밀키)을 하면 PER·PBR·ROE가 자동으로 채워집니다.');return}
  say('서버에서 불러오는 중…');
  try{if(!c.verified)await detectMode();
-  const q=parseQuote(await httpJSON('/price/'+tick,c.mode,20000));if(seq!==afSeq)return;
+  const q=await fetchFin(tick);if(seq!==afSeq)return;
   if(q.name&&!$('#name').value.trim())$('#name').value=q.name;
   let n=0;for(const k in q.fin){const e=$('#f_'+k);if(e.value===''){e.value=q.fin[k];n++}}
   const miss=FK.filter(k=>$('#f_'+k).value==='');
-  say(`${n?`자동으로 ${n}개 채웠습니다. `:''}${miss.length?`비어 있음: ${miss.map(k=>LBL[k]||k).join('·')} → 저장 후 ⚙ 설정의 웹검색 보충으로 채우세요.`:'모든 항목이 채워졌습니다.'}`)}
+  say(`${n?`자동으로 ${n}개 채웠습니다${q.period?`(DART ${q.period.slice(0,4)}년 기준)`:''}. `:''}${q.dartErr?`⚠ DART 재무 조회 실패(${q.dartErr.slice(0,60)}). `:''}${miss.length?`비어 있음: ${miss.map(k=>LBL[k]||k).join('·')} → 저장 후 ⚙ 설정의 웹검색 보충으로 채우세요(영업현금흐름은 DART 자료에 없습니다).`:'모든 항목이 채워졌습니다.'}`)}
  catch(e){say('서버에서 가져오지 못했습니다('+(e.message||e)+'). 연결을 확인하세요.')}}
 const LBL={per:'PER',pbr:'PBR',roe:'ROE',debt:'부채비율',opm:'영업이익률',ocf:'영업현금흐름',revg:'매출성장률',epsg:'EPS성장률'};
-$('#afill').onclick=()=>autoFill(false);
+$('#afill').onclick=()=>autoFill(false);$('#c-ocf').onclick=ocfAll;
+$('#afocf').onclick=()=>{const n=$('#name').value.trim();if(!n){toast('종목명을 먼저 입력하세요');return}copyText(ocfPrompt([{name:n,tick:code6($('#tick').value)}]));toast('복사됨 — Claude에 붙여넣어 답을 받은 뒤 ⚙ 설정의 붙여넣기 불러오기로 넣으세요')};
 $('#tick').addEventListener('input',()=>{if(!editing&&/^\d{6}$/.test($('#tick').value.trim()))autoFill(true)});
-$('#name').addEventListener('change',()=>{if(!editing)autoFill(true)});
+$('#name').addEventListener('change',()=>{if(!editing&&$('#sg').style.display==='none')autoFill(true)});
 /* ---------- 포트폴리오 PWA 보유종목 자동 불러오기 ---------- */
 const code6=c=>{const d=String(c||'').replace(/\D/g,'');return d&&d.length<=6?d.padStart(6,'0'):''};
 function readPortfolio(){let best=null;try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k===K)continue;let o;try{o=JSON.parse(localStorage.getItem(k))}catch(e){continue}
@@ -334,9 +345,9 @@ function autoHold(manual){const o=readPortfolio();
  const r=syncHoldings(o);render();if(manual||r.add)toast(`보유종목 ${r.n}개 불러옴${r.add?` (새로 ${r.add}개)`:''}`);holdMsg()}
 let aqDone=false;
 async function detectMode(){const c=db.conn,modes=[c.mode,...MODES].filter((m,i,a)=>a.indexOf(m)===i);for(const m of modes){try{await httpJSON('/price/005930',m,40000);c.mode=m;c.verified=true;save();return}catch(e){}}throw new Error('mode')}
-async function autoQuote(){if(aqDone)return;const c=db.conn;if(!c.url||!c.secret)return;const t=db.stocks.filter(s=>s.held&&s.tick&&!has((s.fin||{}).per)&&!has((s.fin||{}).pbr));if(!t.length)return;aqDone=true;
+async function autoQuote(){if(aqDone)return;const c=db.conn;if(!c.url||!c.secret)return;const t=db.stocks.filter(s=>s.held&&s.tick&&FK.some(k=>k!=='ocf'&&!has((s.fin||{})[k])));if(!t.length)return;aqDone=true;
  try{if(!c.verified)await detectMode()}catch(e){return}
- let i=0;const w=async()=>{while(i<t.length){const s=t[i++];try{const q=parseQuote(await httpJSON('/price/'+s.tick,c.mode,20000));if(Object.keys(q.fin).length)s.fin=Object.assign(s.fin||{},q.fin)}catch(e){}}};
+ let i=0;const w=async()=>{while(i<t.length){const s=t[i++];try{const q=await fetchFin(s.tick);if(Object.keys(q.fin).length)s.fin=Object.assign(s.fin||{},q.fin)}catch(e){}}};
  await Promise.all([w(),w(),w()]);save();render()}
 /* ---------- 웹검색 보충 ---------- */
 const gl=s=>'https://www.google.com/search?q='+encodeURIComponent((s.name||'')+' '+(s.tick||'')+' ROE 부채비율 영업이익률 PER PBR 최신');
@@ -344,6 +355,12 @@ function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';cl
 function copyText(t){try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t);return true}}catch(e){}
  const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();let ok=false;try{ok=document.execCommand('copy')}catch(e){}ta.remove();return ok}
 const missing=()=>db.stocks.filter(s=>FK.some(k=>!has((s.fin||{})[k])));
+function ocfPrompt(list){return `다음 한국 상장 종목의 최근 확정 연간 영업활동현금흐름(영업현금흐름)을 웹검색(DART 공시 등)으로 확인해서, 아래 열 순서의 표로만 답해줘.
+열: 종목명 | 종목코드 | 영업현금흐름
+- 단위: 억원, 플러스/마이너스 숫자만
+- 확인하지 못한 칸은 비워 두고, 지어내지 말 것
+- 표 아래에 출처와 기준 연도를 따로 적어줘
+종목: ${list.map(s=>s.name+(s.tick?'('+s.tick+')':'')).join(', ')}`}
 function aiPrompt(list){return `다음 한국 상장 종목의 최신 재무 지표를 웹검색으로 확인해서, 아래 열 순서의 표로만 답해줘(탭 구분 또는 마크다운 표 모두 가능).
 열: 종목명 | 종목코드 | PER | PBR | ROE | 부채비율 | 영업이익률 | 매출성장률 | EPS성장률 | 영업현금흐름
 - 단위: PER·PBR은 배, 나머지는 %, 영업현금흐름은 플러스/마이너스 금액(숫자만)
@@ -351,6 +368,7 @@ function aiPrompt(list){return `다음 한국 상장 종목의 최신 재무 지
 - 확인하지 못한 칸은 비워 두고, 지어내지 말 것
 - 표 아래에 출처와 기준 연도를 따로 적어줘
 종목: ${list.map(s=>s.name+(s.tick?'('+s.tick+')':'')).join(', ')}`}
+function ocfAll(){const l=db.stocks.filter(s=>!has((s.fin||{}).ocf));if(!l.length){toast('영업현금흐름이 비어 있는 종목이 없습니다');return}copyText(ocfPrompt(l));toast(`${l.length}개 종목 질문 복사됨`)}
 function refreshMiss(){const m=missing(),box=$('#c-missbtn');$('#c-miss').textContent=m.length?`재무가 비어 있는 종목 ${m.length}개`:'모든 종목의 재무가 채워져 있습니다.';box.innerHTML='';
  for(let i=0;i<m.length;i+=25){const b=document.createElement('button');b.className='btn'+(i===0?' pri':'');b.textContent=`🤖 질문문 복사 (${i+1}~${Math.min(i+25,m.length)})`;b.onclick=()=>{toast(copyText(aiPrompt(m.slice(i,i+25)))?'질문문을 복사했습니다. Claude에 붙여넣으세요':'복사 실패 — 직접 선택해 복사하세요')};box.appendChild(b)}}
 /* ---------- 설정: 연결 · 불러오기 · 백업/복원 ---------- */
@@ -393,6 +411,17 @@ async function httpJSON(path,mode,ms=30000){const c=db.conn;let url=c.url.replac
  try{const res=await fetch(url,{headers:hd,signal:ac.signal});if(!res.ok){const e=new Error('HTTP '+res.status);e.status=res.status;throw e}
   const tx=await res.text();try{return JSON.parse(tx)}catch(e){throw new Error('JSON이 아닌 응답: '+tx.slice(0,80))}}finally{clearTimeout(tm)}}
 function flat(o,out={},d=0){if(o&&typeof o==='object'&&d<3)for(const k in o){const v=o[k];if(v&&typeof v==='object')flat(v,out,d+1);else out[k.toLowerCase()]=v}return out}
+/* DART(프록시 /stock-fundamentals, /stock-extra-fundamentals) → 재무 지표 */
+function dartFin(b,x){const P=a=>Array.isArray(a&&a.periods)?a.periods.filter(r=>r&&r.period):[];const B=P(b).sort((m,n)=>String(m.period).localeCompare(String(n.period))),X=P(x);
+ const ann=B.filter(r=>String(r.period).endsWith('12'));const A=ann.length?ann[ann.length-1]:B[B.length-1];if(!A)return{};
+ const prev=ann.length>1?ann[ann.length-2]:null,r1=v=>v==null||!isFinite(v)?null:+Number(v).toFixed(1),f={};
+ if(A.roe!=null)f.roe=r1(A.roe);if(A.debtRatio!=null)f.debt=r1(A.debtRatio);if(A.revenueGrowth!=null)f.revg=r1(A.revenueGrowth);
+ if(prev&&A.eps!=null&&prev.eps>0)f.epsg=r1((A.eps/prev.eps-1)*100);
+ const e=X.find(r=>r.period===A.period);if(e&&e.revenue>0&&e.opProfit!=null)f.opm=r1(e.opProfit/e.revenue*100);
+ for(const k in f)if(f[k]==null)delete f[k];f.__p=A.period;return f}
+async function fetchFin(code){const c=db.conn;const q=parseQuote(await httpJSON('/price/'+code,c.mode,20000));let d={};
+ try{const[b,x]=await Promise.all([httpJSON('/stock-fundamentals/'+code,c.mode,60000),httpJSON('/stock-extra-fundamentals/'+code,c.mode,60000).catch(()=>null)]);d=dartFin(b,x)}catch(e){q.dartErr=String(e.message||e)}
+ const p=d.__p;delete d.__p;q.fin=Object.assign({},q.fin,d);if(p)q.period=p;return q}
 function parseQuote(j){const f=flat(j),n=k=>{const x=parseFloat(String(f[k]).replace(/,/g,''));return isFinite(x)&&x!==0?x:null};
  const per=n('per'),pbr=n('pbr'),eps=n('eps'),bps=n('bps');let roe=n('roe');if(roe==null&&eps&&bps)roe=eps/bps*100;
  const fin={};if(per)fin.per=per;if(pbr)fin.pbr=pbr;if(roe)fin.roe=+roe.toFixed(1);
@@ -414,7 +443,7 @@ async function loadFromServer(){if(loading)return;const c=db.conn;
  if(!list.length){$('#c-prog').textContent='불러올 종목이 없습니다.';return}
  loading=true;stopFlag=false;let done=0,idx=0,add=0,upd=0;const fail=[],nofin=[];$('#c-load').disabled=true;
  const worker=async()=>{while(idx<list.length&&!stopFlag){const[code,nm]=list[idx++];
-  try{const q=parseQuote(await httpJSON('/price/'+code,c.mode,20000));const ex=db.stocks.find(s=>s.tick===code);
+  try{const q=await fetchFin(code);const ex=db.stocks.find(s=>s.tick===code);
    if(ex){if(Object.keys(q.fin).length){ex.fin=Object.assign(ex.fin||{},q.fin);upd++}else nofin.push(ex.name)}
    else if(Object.keys(q.fin).length){db.stocks.push({id:'m'+code,name:nm||q.name||code,tick:code,fin:q.fin,memo:'서버 불러오기'});add++}
    else nofin.push(nm||code)}catch(e){fail.push((nm||code)+': '+(e.message||'실패'))}
