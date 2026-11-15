@@ -68,9 +68,11 @@ dialog::backdrop{background:#000a}
 <div class="two"><div style="position:relative"><label>종목명 <span class="sub">(초성 검색 가능)</span></label><input id="name" required autocomplete="off"><div id="sg" style="display:none;position:absolute;left:0;right:0;top:100%;z-index:20;max-height:210px;overflow:auto;background:#1b1e4a;border:1px solid var(--gold);border-radius:8px"></div></div><div><label>종목코드(선택)</label><input id="tick"></div></div>
 <h2 style="margin:14px 0 0;font-size:14px;color:var(--gold)">재무 지표 (아는 것만 입력해도 됩니다)</h2>
 <div class="three"><div><label>PER(배)</label><input id="f_per" type="number" step="any"></div><div><label>PBR(배)</label><input id="f_pbr" type="number" step="any"></div><div><label>ROE(%)</label><input id="f_roe" type="number" step="any"></div></div>
-<div class="three"><div><label>부채비율(%)</label><input id="f_debt" type="number" step="any"></div><div><label>영업이익률(%)</label><input id="f_opm" type="number" step="any"></div><div><label>영업현금흐름</label><input id="f_ocf" type="number" step="any" placeholder="+/- 금액"></div></div>
+<div class="three"><div><label>부채비율(%)</label><input id="f_debt" type="number" step="any"></div><div><label>영업이익률(%)</label><input id="f_opm" type="number" step="any"></div><div><label>영업현금흐름</label><input id="f_ocf" type="text" inputmode="decimal" placeholder="+/- 억원"></div></div>
 <div class="two"><div><label>매출 성장률(%/년)</label><input id="f_revg" type="number" step="any"></div><div><label>EPS 성장률(%/년)</label><input id="f_epsg" type="number" step="any"></div></div>
 <p class="sub" id="afmsg" style="margin:8px 0 0"></p>
+<div class="row" style="margin-top:6px"><button class="btn" type="button" id="ocfopen">🔗 현금흐름표 열기</button><button class="btn pri" type="button" id="ocfpaste">📋 복사한 값 붙여넣기</button></div>
+<p class="sub" style="margin:4px 0 0">① 열린 밸류라인 표에서 <b>영업활동으로인한현금흐름</b> 최근 연간 숫자를 길게 눌러 복사 → ② 여기로 돌아와 붙여넣기</p>
 <button class="btn" type="button" id="afocf" style="margin-top:6px">🔍 영업현금흐름 웹검색 질문 복사</button>
 <label>메모 (투자 이유·출처)</label><textarea id="memo"></textarea>
 <div class="row" style="margin-top:14px;justify-content:space-between">
@@ -128,7 +130,7 @@ const $=s=>document.querySelector(s),has=x=>x!=null&&!isNaN(x);
 const clamp=(x,a=0,b=100)=>Math.max(a,Math.min(b,x));
 const num=x=>Number(x).toLocaleString('ko-KR',{maximumFractionDigits:2});
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const val=id=>{const v=$(id).value.trim();return v===''?null:parseFloat(v)};
+const val=id=>{const v=$(id).value.trim().replace(/,/g,'');return v===''?null:(isFinite(parseFloat(v))?parseFloat(v):null)};
 const FK=['per','pbr','roe','debt','opm','revg','epsg','ocf'];
 /* ---------- 여섯 거장 (재무 기준) ---------- */
 const wavg=p=>{const w=p.reduce((a,b)=>a+b[1],0);return w?p.reduce((a,b)=>a+b[0]*b[1],0)/w:0};
@@ -320,10 +322,14 @@ async function autoFill(silent){const seq=++afSeq,m=$('#afmsg');const say=t=>{if
   if(q.name&&!$('#name').value.trim())$('#name').value=q.name;
   let n=0;for(const k in q.fin){const e=$('#f_'+k);if(e.value===''){e.value=q.fin[k];n++}}
   const miss=FK.filter(k=>$('#f_'+k).value==='');
-  say(`${n?`자동으로 ${n}개 채웠습니다${q.period?`(DART ${q.period.slice(0,4)}년 기준)`:''}. `:''}${q.dartErr?`⚠ DART 재무 조회 실패(${q.dartErr.slice(0,60)}). `:''}${miss.length?`비어 있음: ${miss.map(k=>LBL[k]||k).join('·')} → 저장 후 ⚙ 설정의 웹검색 보충으로 채우세요(영업현금흐름은 DART 자료에 없습니다).`:'모든 항목이 채워졌습니다.'}`)}
+  say(`${n?`자동으로 ${n}개 채웠습니다${q.period?`(DART ${q.period.slice(0,4)}년 기준)`:''}. `:''}${q.calc?'PER·PBR은 현재가÷DART EPS·BPS로 계산. ':''}${q.dartErr?`⚠ DART 재무 조회 실패(${q.dartErr.slice(0,60)}). `:''}${miss.length?`비어 있음: ${miss.map(k=>LBL[k]||k).join('·')} → 저장 후 ⚙ 설정의 웹검색 보충으로 채우세요(영업현금흐름은 DART 자료에 없습니다).`:'모든 항목이 채워졌습니다.'}`)}
  catch(e){say('서버에서 가져오지 못했습니다('+(e.message||e)+'). 연결을 확인하세요.')}}
 const LBL={per:'PER',pbr:'PBR',roe:'ROE',debt:'부채비율',opm:'영업이익률',ocf:'영업현금흐름',revg:'매출성장률',epsg:'EPS성장률'};
-$('#afill').onclick=()=>autoFill(false);$('#c-ocf').onclick=ocfAll;
+$('#afill').onclick=()=>autoFill(false);
+$('#ocfopen').onclick=()=>{const t=code6($('#tick').value);if(!t){toast('종목코드를 먼저 입력하세요');return}window.open('https://www.valueline.co.kr/finance/cashflow/'+t,'_blank')};
+$('#ocfpaste').onclick=async()=>{let t='';try{t=await navigator.clipboard.readText()}catch(e){toast('붙여넣기 권한이 없습니다. 칸을 길게 눌러 직접 붙여넣으세요');return}
+ const m=String(t).match(/-?\d[\d,]*(\.\d+)?/);if(!m){toast('복사한 값에서 숫자를 찾지 못했습니다');return}
+ const v=m[0].replace(/,/g,'');$('#f_ocf').value=v;toast('영업현금흐름 '+Number(v).toLocaleString('ko-KR')+' 입력됨')};$('#c-ocf').onclick=ocfAll;
 $('#afocf').onclick=()=>{const n=$('#name').value.trim();if(!n){toast('종목명을 먼저 입력하세요');return}copyText(ocfPrompt([{name:n,tick:code6($('#tick').value)}]));toast('복사됨 — Claude에 붙여넣어 답을 받은 뒤 ⚙ 설정의 붙여넣기 불러오기로 넣으세요')};
 $('#tick').addEventListener('input',()=>{if(!editing&&/^\d{6}$/.test($('#tick').value.trim()))autoFill(true)});
 $('#name').addEventListener('change',()=>{if(!editing&&$('#sg').style.display==='none')autoFill(true)});
@@ -418,14 +424,15 @@ function dartFin(b,x){const P=a=>Array.isArray(a&&a.periods)?a.periods.filter(r=
  if(A.roe!=null)f.roe=r1(A.roe);if(A.debtRatio!=null)f.debt=r1(A.debtRatio);if(A.revenueGrowth!=null)f.revg=r1(A.revenueGrowth);
  if(prev&&A.eps!=null&&prev.eps>0)f.epsg=r1((A.eps/prev.eps-1)*100);
  const e=X.find(r=>r.period===A.period);if(e&&e.revenue>0&&e.opProfit!=null)f.opm=r1(e.opProfit/e.revenue*100);
- for(const k in f)if(f[k]==null)delete f[k];f.__p=A.period;return f}
+ for(const k in f)if(f[k]==null)delete f[k];f.__p=A.period;f.__eps=A.eps;f.__bps=A.bps;return f}
 async function fetchFin(code){const c=db.conn;const q=parseQuote(await httpJSON('/price/'+code,c.mode,20000));let d={};
  try{const[b,x]=await Promise.all([httpJSON('/stock-fundamentals/'+code,c.mode,60000),httpJSON('/stock-extra-fundamentals/'+code,c.mode,60000).catch(()=>null)]);d=dartFin(b,x)}catch(e){q.dartErr=String(e.message||e)}
- const p=d.__p;delete d.__p;q.fin=Object.assign({},q.fin,d);if(p)q.period=p;return q}
+ const p=d.__p,eps=d.__eps,bps=d.__bps;delete d.__p;delete d.__eps;delete d.__bps;q.fin=Object.assign({},q.fin,d);if(p)q.period=p;
+ if(q.price>0){if(!q.fin.per&&eps>0){q.fin.per=+(q.price/eps).toFixed(1);q.calc=1}if(!q.fin.pbr&&bps>0){q.fin.pbr=+(q.price/bps).toFixed(2);q.calc=1}}return q}
 function parseQuote(j){const f=flat(j),n=k=>{const x=parseFloat(String(f[k]).replace(/,/g,''));return isFinite(x)&&x!==0?x:null};
  const per=n('per'),pbr=n('pbr'),eps=n('eps'),bps=n('bps');let roe=n('roe');if(roe==null&&eps&&bps)roe=eps/bps*100;
  const fin={};if(per)fin.per=per;if(pbr)fin.pbr=pbr;if(roe)fin.roe=+roe.toFixed(1);
- const name=f['name']||f['hts_kor_isnm']||f['stock_name']||null;return{fin,name}}
+ const name=f['name']||f['hts_kor_isnm']||f['stock_name']||null;let price=null;for(const k of['stck_prpr','price','currentprice','curprice','cur_price','current','close','now','last']){const x=parseFloat(String(f[k]).replace(/,/g,''));if(isFinite(x)&&x>0){price=x;break}}return{fin,name,price}}
 const msg=t=>{const e=$('#c-msg');e.style.display=t?'block':'none';e.textContent=t||''};
 async function testConn(){const c=db.conn;
  c.url=$('#c-url').value.trim();c.secret=$('#c-secret').value.trim();const custom=$('#c-mode').value.trim();save();
